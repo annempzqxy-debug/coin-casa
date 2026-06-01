@@ -390,47 +390,8 @@ class DashboardMixin(AppMixin):
 
             self.progressbars[category] = (pb, amount_label)
 
-        # Recent transactions for Summary (5 only, card layout)
-        recent_frame = ctk.CTkFrame(
-            page,
-            corner_radius=24
-        )
-        recent_frame.pack(
-            fill="both",
-            expand=True,
-            padx=20,
-            pady=(20, 20)
-        )
-
-        top_recent = ctk.CTkFrame(recent_frame, fg_color="transparent")
-        top_recent.pack(fill="x", padx=20, pady=(20, 10))
-
-        ctk.CTkLabel(
-            top_recent,
-            text="Recent Transactions",
-            font=("Segoe UI", 24, "bold")
-        ).pack(side="left")
-
-        self.summary_recent_transactions_frame = ctk.CTkScrollableFrame(
-            recent_frame,
-            height=220,
-            corner_radius=18
-        )
-        self.summary_recent_transactions_frame.pack(
-            fill="both",
-            expand=True,
-            padx=20,
-            pady=(0, 10)
-        )
-
-        ctk.CTkButton(
-            recent_frame,
-            text="View All Transactions",
-            height=40,
-            command=lambda: self.show_page("Transactions")
-        ).pack(fill="x", padx=20, pady=(0, 20))
-
         return page
+
 
     # =====================
     # TRANSACTIONS PAGE (CARD LIST)
@@ -530,7 +491,9 @@ class DashboardMixin(AppMixin):
 
         self.load_transactions()
         self.render_recent_transactions_cards()
-        self.render_summary_recent_transactions()
+        # Removed recent transactions list from Summary tab.
+
+
 
         if hasattr(self, "progressbars"):
             self.update_budget_progress()
@@ -667,64 +630,5 @@ class DashboardMixin(AppMixin):
             date_label.pack(side="right")
 
 
-    def render_summary_recent_transactions(self):
-        if not hasattr(self, "summary_recent_transactions_frame") or not self.current_user or self.current_user.get_user_id() is None:
-            return
+    # (Removed) render_summary_recent_transactions() - Summary tab no longer shows recent transactions.
 
-        for widget in self.summary_recent_transactions_frame.winfo_children():
-            widget.destroy()
-
-        rows = self.db.get_transactions(self.current_user.get_user_id())[:5]
-
-        for row in rows:
-            tid, user_id, ttype, amount, category, desc, dstr = row
-
-            card = ctk.CTkFrame(
-                self.summary_recent_transactions_frame,
-                corner_radius=18
-            )
-            card.pack(fill="x", padx=10, pady=6)
-
-            top_row = ctk.CTkFrame(card, fg_color="transparent")
-            top_row.pack(fill="x", padx=15, pady=(10, 4))
-
-            icon_label = ctk.CTkLabel(
-                top_row,
-                text="●",
-                font=("Segoe UI", 18)
-            )
-            icon_label.pack(side="left", padx=(0, 8))
-
-            name_label = ctk.CTkLabel(
-                top_row,
-                text=desc,
-                font=("Segoe UI", 14, "bold")
-            )
-            name_label.pack(side="left")
-
-            amount_label = ctk.CTkLabel(
-                top_row,
-                text=f"₱{amount:,.2f}",
-                font=("Segoe UI", 14, "bold"),
-                text_color="#EF4444"
-            )
-            amount_label.pack(side="right")
-
-            bottom_row = ctk.CTkFrame(card, fg_color="transparent")
-            bottom_row.pack(fill="x", padx=15, pady=(0, 10))
-
-            category_label = ctk.CTkLabel(
-                bottom_row,
-                text=category,
-                font=("Segoe UI", 12),
-                text_color="#9CA3AF"
-            )
-            category_label.pack(side="left")
-
-            date_label = ctk.CTkLabel(
-                bottom_row,
-                text=dstr,
-                font=("Segoe UI", 12),
-                text_color="#9CA3AF"
-            )
-            date_label.pack(side="right")
