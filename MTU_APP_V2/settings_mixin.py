@@ -36,13 +36,34 @@ class SettingsMixin(AppMixin):
         )
         self.username_change_entry.pack(fill="x", padx=20, pady=(5, 5))
 
-        self.username_current_password_entry = ctk.CTkEntry(
-            profile_main,
-            placeholder_text="Current Password (for username change)",
-            height=45,
-            show="*"
-        )
-        self.username_current_password_entry.pack(fill="x", padx=20, pady=(0, 5))
+        def _pw_row(parent, entry_attr, placeholder):
+            """Helper: creates a password entry row with an eye-toggle button."""
+            row = ctk.CTkFrame(parent, fg_color="transparent")
+            row.pack(fill="x", padx=20, pady=(0, 5))
+            row.grid_columnconfigure(0, weight=1)
+            entry = ctk.CTkEntry(
+                row,
+                placeholder_text=placeholder,
+                height=45,
+                show="*"
+            )
+            entry.grid(row=0, column=0, sticky="ew")
+            visible = ctk.BooleanVar(value=False)
+            btn = ctk.CTkButton(
+                row, text="Show", width=50, height=45,
+                fg_color="transparent", hover_color="#374151",
+                command=lambda e=entry, v=visible, b=None: None  # placeholder, set below
+            )
+            btn.grid(row=0, column=1, padx=(4, 0))
+            def toggle(e=entry, v=visible, b=btn):
+                v.set(not v.get())
+                e.configure(show="" if v.get() else "*")
+                b.configure(text="Hide" if v.get() else "Show")
+            btn.configure(command=toggle)
+            setattr(self, entry_attr, entry)
+
+        _pw_row(profile_main, "username_current_password_entry",
+                "Current Password (for username change)")
 
         ctk.CTkButton(
             profile_main,
@@ -52,21 +73,9 @@ class SettingsMixin(AppMixin):
         ).pack(fill="x", padx=20, pady=(0, 15))
 
         # Password (change using current password)
-        self.new_password_entry = ctk.CTkEntry(
-            profile_main,
-            placeholder_text="New Password",
-            height=45,
-            show="*"
-        )
-        self.new_password_entry.pack(fill="x", padx=20, pady=(5, 5))
-
-        self.current_password_for_change_entry = ctk.CTkEntry(
-            profile_main,
-            placeholder_text="Current Password (for password change)",
-            height=45,
-            show="*"
-        )
-        self.current_password_for_change_entry.pack(fill="x", padx=20, pady=(0, 5))
+        _pw_row(profile_main, "new_password_entry", "New Password")
+        _pw_row(profile_main, "current_password_for_change_entry",
+                "Current Password (for password change)")
 
         ctk.CTkButton(
             profile_main,
@@ -292,72 +301,65 @@ class SettingsMixin(AppMixin):
             pady=15
         )
 
-        # Add & Delete side-by-side
-        actions_row = ctk.CTkFrame(page, fg_color="transparent")
-        actions_row.pack(fill="x", padx=20, pady=(10, 20))
-        actions_row.grid_columnconfigure((0, 1), weight=1)
-
-        add_frame = ctk.CTkFrame(actions_row, corner_radius=24)
-        add_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+        add_frame = ctk.CTkFrame(page, corner_radius=24)
+        add_frame.pack(fill="x", padx=20, pady=(10, 20))
 
         ctk.CTkLabel(
             add_frame,
             text="Add New Category",
-            font=("Segoe UI", 18, "bold")
-        ).pack(anchor="w", padx=16, pady=(15, 5))
+            font=("Segoe UI", 20, "bold")
+        ).pack(anchor="w", padx=20, pady=(15, 5))
 
         self.new_category_entry = ctk.CTkEntry(
             add_frame,
             placeholder_text="Category Name",
-            height=42
+            height=45
         )
-        self.new_category_entry.pack(fill="x", padx=16, pady=(0, 6))
+        self.new_category_entry.pack(fill="x", padx=20, pady=10)
 
         self.category_status = ctk.CTkLabel(
             add_frame,
             text="",
-            font=("Segoe UI", 13)
+            font=("Segoe UI", 14)
         )
-        self.category_status.pack(anchor="w", padx=16, pady=(0, 4))
+        self.category_status.pack(anchor="w", padx=20, pady=(0, 5))
 
         ctk.CTkButton(
             add_frame,
             text="Add Category",
-            height=42,
+            height=45,
             command=self.add_new_category
-        ).pack(fill="x", padx=16, pady=(0, 14))
+        ).pack(fill="x", padx=20, pady=(0, 15))
 
-        delete_frame = ctk.CTkFrame(actions_row, corner_radius=24)
-        delete_frame.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+        delete_frame = ctk.CTkFrame(page, corner_radius=24)
+        delete_frame.pack(fill="x", padx=20, pady=(0, 20))
 
         ctk.CTkLabel(
             delete_frame,
             text="Delete Category",
-            font=("Segoe UI", 18, "bold")
-        ).pack(anchor="w", padx=16, pady=(15, 5))
+            font=("Segoe UI", 20, "bold")
+        ).pack(anchor="w", padx=20, pady=(15, 5))
 
         self.delete_category_entry = ctk.CTkEntry(
             delete_frame,
             placeholder_text="Category Name to delete",
-            height=42
+            height=45
         )
-        self.delete_category_entry.pack(fill="x", padx=16, pady=(0, 6))
+        self.delete_category_entry.pack(fill="x", padx=20, pady=10)
 
         self.delete_category_status = ctk.CTkLabel(
             delete_frame,
             text="",
-            font=("Segoe UI", 13)
+            font=("Segoe UI", 14)
         )
-        self.delete_category_status.pack(anchor="w", padx=16, pady=(0, 4))
+        self.delete_category_status.pack(anchor="w", padx=20, pady=(0, 5))
 
         ctk.CTkButton(
             delete_frame,
             text="Delete Category",
-            height=42,
-            fg_color="#EF4444",
-            hover_color="#DC2626",
+            height=45,
             command=self.delete_category_action
-        ).pack(fill="x", padx=16, pady=(0, 14))
+        ).pack(fill="x", padx=20, pady=(0, 15))
 
         return page
 

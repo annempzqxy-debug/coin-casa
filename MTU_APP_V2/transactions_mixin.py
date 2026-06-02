@@ -119,7 +119,7 @@ class TransactionsMixin(AppMixin):
     def transaction_popup(self, ttype):
         win = ctk.CTkToplevel(self)
         win.title(f"Add {ttype}")
-        win.geometry("430x440")
+        win.geometry("430x530")
 
         ctk.CTkLabel(
             win,
@@ -127,11 +127,19 @@ class TransactionsMixin(AppMixin):
             font=("Segoe UI", 20, "bold")
         ).pack(pady=15)
 
+        # Amount — Required
+        ctk.CTkLabel(
+            win,
+            text="* Required",
+            font=("Segoe UI", 11, "bold"),
+            text_color="#EF4444",
+            anchor="w"
+        ).pack(fill="x", padx=55, pady=(0, 2))
         amount_entry = ctk.CTkEntry(
             win,
             placeholder_text="Amount"
         )
-        amount_entry.pack(pady=10)
+        amount_entry.pack(pady=(0, 10))
 
         self.categories = self.db.get_categories_for_user(self.current_user.get_user_id())
         category_combo = ctk.CTkComboBox(
@@ -142,17 +150,33 @@ class TransactionsMixin(AppMixin):
         if self.categories:
             category_combo.set(self.categories[0])
 
+        # Description — Not Required
+        ctk.CTkLabel(
+            win,
+            text="* Not required",
+            font=("Segoe UI", 11, "bold"),
+            text_color="#9CA3AF",
+            anchor="w"
+        ).pack(fill="x", padx=55, pady=(4, 2))
         desc_entry = ctk.CTkEntry(
             win,
-            placeholder_text=f"{ttype} Description (optional)"
+            placeholder_text=f"{ttype} Description"
         )
-        desc_entry.pack(pady=10)
+        desc_entry.pack(pady=(0, 10))
 
+        # Date — Not Required
+        ctk.CTkLabel(
+            win,
+            text="* Not required",
+            font=("Segoe UI", 11, "bold"),
+            text_color="#9CA3AF",
+            anchor="w"
+        ).pack(fill="x", padx=55, pady=(4, 2))
         date_entry = ctk.CTkEntry(
             win,
-            placeholder_text="Date optional: YYYY-MM-DD, MM/DD/YYYY, DD.MM.YYYY, 28 May 2026"
+            placeholder_text="Date"
         )
-        date_entry.pack(pady=10)
+        date_entry.pack(pady=(0, 10))
 
         input_status = ctk.CTkLabel(
             win,
