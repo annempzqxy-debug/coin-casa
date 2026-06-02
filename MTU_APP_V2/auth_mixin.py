@@ -65,23 +65,49 @@ class AuthMixin(AppMixin):
         )
         self.username_entry.pack(pady=10)
 
+        pw_frame = ctk.CTkFrame(center, fg_color="transparent", width=300)
+        pw_frame.pack(pady=10)
         self.password_entry = ctk.CTkEntry(
-            center,
+            pw_frame,
             placeholder_text="Password",
             show="*",
-            width=300,
+            width=255,
             height=45
         )
-        self.password_entry.pack(pady=10)
+        self.password_entry.pack(side="left")
+        pw_eye_var = ctk.BooleanVar(value=False)
+        def toggle_pw():
+            pw_eye_var.set(not pw_eye_var.get())
+            self.password_entry.configure(show="" if pw_eye_var.get() else "*")
+            pw_eye_btn.configure(text="Hide" if pw_eye_var.get() else "Show")
+        pw_eye_btn = ctk.CTkButton(
+            pw_frame, text="Show", width=40, height=45,
+            fg_color="transparent", hover_color="#374151",
+            command=toggle_pw
+        )
+        pw_eye_btn.pack(side="left", padx=(4, 0))
 
+        confirm_frame = ctk.CTkFrame(center, fg_color="transparent", width=300)
+        confirm_frame.pack(pady=10)
         self.confirm_password_entry = ctk.CTkEntry(
-            center,
+            confirm_frame,
             placeholder_text="Confirm Password (for sign up)",
             show="*",
-            width=300,
+            width=255,
             height=45
         )
-        self.confirm_password_entry.pack(pady=10)
+        self.confirm_password_entry.pack(side="left")
+        confirm_eye_var = ctk.BooleanVar(value=False)
+        def toggle_confirm():
+            confirm_eye_var.set(not confirm_eye_var.get())
+            self.confirm_password_entry.configure(show="" if confirm_eye_var.get() else "*")
+            confirm_eye_btn.configure(text="Hide" if confirm_eye_var.get() else "Show")
+        confirm_eye_btn = ctk.CTkButton(
+            confirm_frame, text="Show", width=40, height=45,
+            fg_color="transparent", hover_color="#374151",
+            command=toggle_confirm
+        )
+        confirm_eye_btn.pack(side="left", padx=(4, 0))
 
         self.nickname_label = ctk.CTkLabel(
             center,
@@ -187,7 +213,6 @@ class AuthMixin(AppMixin):
             self.total_limit = self.current_budget_limit
 
             self.auth_frame.destroy()
-            self._is_new_user = not budget_type and not budget_limit
             self.show_reminder_prompt()
         else:
             self.auth_status.configure(
@@ -288,20 +313,14 @@ class AuthMixin(AppMixin):
             if self.current_user and self.current_user.get_user_id() is not None:
                 self.db.update_user_notifications(self.current_user.get_user_id(), True)
             reminder.destroy()
-            if getattr(self, "_is_new_user", False):
-                self.show_budget_setup_page()
-            else:
-                self.initialize_main_app()
+            self.show_budget_setup_page()
 
         def skip_reminder():
             self.current_notifications_enabled = 0
             if self.current_user and self.current_user.get_user_id() is not None:
                 self.db.update_user_notifications(self.current_user.get_user_id(), False)
             reminder.destroy()
-            if getattr(self, "_is_new_user", False):
-                self.show_budget_setup_page()
-            else:
-                self.initialize_main_app()
+            self.show_budget_setup_page()
 
         ctk.CTkButton(
             button_frame,
