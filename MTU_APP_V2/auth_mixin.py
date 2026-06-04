@@ -1,15 +1,16 @@
 import hashlib
 import re
+import os
 import customtkinter as ctk
+from PIL import Image
 from models import User
 
-
 from mixin_base import AppMixin
+
 class AuthMixin(AppMixin):
 
     def hash_password(self, password):
         return hashlib.sha256(password.encode()).hexdigest()
-
 
     def validate_password(self, password):
         if len(password) < 8:
@@ -26,7 +27,6 @@ class AuthMixin(AppMixin):
     # AUTH PAGE
     # =====================
 
-
     def create_auth_page(self):
         for widget in self.winfo_children():
             widget.destroy()
@@ -34,6 +34,54 @@ class AuthMixin(AppMixin):
         self.auth_frame = ctk.CTkFrame(self)
         self.auth_frame.pack(fill="both", expand=True)
 
+        # ── Side logos (grayscale) ──────────────────────────────────
+        gray_logo_img = None
+        gray_logo_path = os.path.join(os.path.dirname(__file__), "gray_casa.png")
+        if os.path.exists(gray_logo_path):
+            try:
+                pil_gray = Image.open(gray_logo_path).resize((200, 200))
+                gray_logo_img = ctk.CTkImage(
+                    light_image=pil_gray,
+                    dark_image=pil_gray,
+                    size=(200, 200)
+                )
+            except Exception:
+                gray_logo_img = None
+
+        if gray_logo_img:
+            left_logo = ctk.CTkLabel(
+                self.auth_frame,
+                text="",
+                image=gray_logo_img
+            )
+            left_logo.place(relx=0.13, rely=0.5, anchor="center")
+
+            right_logo = ctk.CTkLabel(
+                self.auth_frame,
+                text="",
+                image=gray_logo_img
+            )
+            right_logo.place(relx=0.87, rely=0.5, anchor="center")
+
+            # Background center logo (large, faint)
+            try:
+                pil_bg = Image.open(gray_logo_path).resize((320, 320))
+                bg_logo_img = ctk.CTkImage(
+                    light_image=pil_bg,
+                    dark_image=pil_bg,
+                    size=(320, 320)
+                )
+                bg_label = ctk.CTkLabel(
+                    self.auth_frame,
+                    text="",
+                    image=bg_logo_img
+                )
+                bg_label.place(relx=0.5, rely=0.5, anchor="center")
+                bg_label.lower()
+            except Exception:
+                pass
+
+        # ── Center card ────────────────────────────────────────────
         center = ctk.CTkFrame(
             self.auth_frame,
             width=420,
@@ -43,16 +91,55 @@ class AuthMixin(AppMixin):
         center.place(relx=0.5, rely=0.5, anchor="center")
         center.pack_propagate(False)
 
+        # ── App title: CoinsCasa styled ────────────────────────────
+        title_frame = ctk.CTkFrame(center, fg_color="transparent")
+        title_frame.pack(pady=(32, 4))
+
+        # "COINS" in white/dark, "C" in gold, "ASA" in white/dark
+        title_lbl = ctk.CTkLabel(
+            title_frame,
+            text="COINSCASA",
+            font=("Georgia", 34, "bold"),
+            text_color="#C9A84C"
+        )
+        title_lbl.pack()
+
+        # Render styled title with mixed colors using a canvas-like approach
+        # We'll use two labels side by side for the gold-C effect
+        title_lbl.destroy()
+
+        styled_row = ctk.CTkFrame(title_frame, fg_color="transparent")
+        styled_row.pack()
+
+        mode = ctk.get_appearance_mode()
+        base_color = "white" if mode == "Dark" else "#1a1a1a"
+
         ctk.CTkLabel(
-            center,
-            text="MoneyTracker Ultimate",
-            font=("Segoe UI", 32, "bold")
-        ).pack(pady=(32, 8))
+            styled_row,
+            text="COINS",
+            font=("Georgia", 34, "bold"),
+            text_color=base_color
+        ).pack(side="left")
+
+        ctk.CTkLabel(
+            styled_row,
+            text="C",
+            font=("Georgia", 34, "bold"),
+            text_color="#C9A84C"
+        ).pack(side="left")
+
+        ctk.CTkLabel(
+            styled_row,
+            text="ASA",
+            font=("Georgia", 34, "bold"),
+            text_color=base_color
+        ).pack(side="left")
 
         ctk.CTkLabel(
             center,
             text="Login or Create an Account",
-            font=("Segoe UI", 20)
+            font=("Segoe UI", 16),
+            text_color="#9CA3AF"
         ).pack(pady=(0, 20))
 
         self.notifications_var = ctk.IntVar(value=0)
@@ -161,7 +248,6 @@ class AuthMixin(AppMixin):
             command=self.destroy
         ).pack(pady=(10, 20))
 
-
     def check_password_match(self, event=None):
         password = self.password_entry.get().strip()
         confirm = self.confirm_password_entry.get().strip()
@@ -181,7 +267,6 @@ class AuthMixin(AppMixin):
     # LOGIN
     # =====================
 
-
     def login_user(self):
         username = self.username_entry.get().strip()
         password = self.password_entry.get().strip()
@@ -194,14 +279,8 @@ class AuthMixin(AppMixin):
              streak_last_success, streak_last_checked) = user
 
             self.current_user = User(
-                uid,
-                uname,
-                nick,
-                budget_limit,
-                budget_type,
-                notif,
-                streak_current,
-                streak_best
+                uid, uname, nick, budget_limit,
+                budget_type, notif, streak_current, streak_best
             )
             self.current_budget_limit = budget_limit or 0
             self.current_budget_type = budget_type
@@ -223,7 +302,6 @@ class AuthMixin(AppMixin):
     # =====================
     # SIGNUP
     # =====================
-
 
     def signup_user(self):
         username = self.username_entry.get().strip()
@@ -262,7 +340,6 @@ class AuthMixin(AppMixin):
             return
 
         hashed = self.hash_password(password)
-
         success = self.db.create_user(username, hashed, nickname, 0, notifications_enabled)
         if not success:
             self.auth_status.configure(
@@ -279,7 +356,6 @@ class AuthMixin(AppMixin):
     # =====================
     # REMINDER PROMPT
     # =====================
-
 
     def show_reminder_prompt(self):
         reminder = ctk.CTkToplevel(self)
@@ -323,26 +399,18 @@ class AuthMixin(AppMixin):
             self.show_budget_setup_page()
 
         ctk.CTkButton(
-            button_frame,
-            text="✓ Enable",
-            width=140,
-            height=40,
+            button_frame, text="✓ Enable", width=140, height=40,
             command=enable_reminder
         ).pack(side="left", padx=10)
 
         ctk.CTkButton(
-            button_frame,
-            text="Ignore",
-            width=140,
-            height=40,
-            fg_color="#6B7280",
-            command=skip_reminder
+            button_frame, text="Ignore", width=140, height=40,
+            fg_color="#6B7280", command=skip_reminder
         ).pack(side="left", padx=10)
 
     # =====================
     # BUDGET SETUP PAGE
     # =====================
-
 
     def show_budget_setup_page(self):
         budget = ctk.CTkToplevel(self)
@@ -350,12 +418,11 @@ class AuthMixin(AppMixin):
         budget.geometry("700x540")
         budget.grab_set()
 
-        title = ctk.CTkLabel(
+        ctk.CTkLabel(
             budget,
             text="Set Your Budget Limit",
             font=("Segoe UI", 32, "bold")
-        )
-        title.pack(pady=(30, 20))
+        ).pack(pady=(30, 20))
 
         desc = (
             "A spending limit helps you track expenses and build saving streaks.\n"
@@ -380,13 +447,10 @@ class AuthMixin(AppMixin):
             font=("Segoe UI", 18, "bold")
         ).pack(pady=(0, 5))
 
-        options = ["Daily", "Weekly", "Monthly", "Yearly"]
-        for option in options:
+        for option in ["Daily", "Weekly", "Monthly", "Yearly"]:
             ctk.CTkRadioButton(
-                period_frame,
-                text=option,
-                variable=self.budget_type_var,
-                value=option,
+                period_frame, text=option,
+                variable=self.budget_type_var, value=option,
                 font=("Segoe UI", 18)
             ).pack(pady=3)
 
@@ -412,10 +476,8 @@ class AuthMixin(AppMixin):
                 value_str = self.initial_budget_entry.get().strip()
                 chosen_type_label = self.budget_type_var.get().lower()
                 map_type = {
-                    "daily": "daily",
-                    "weekly": "weekly",
-                    "monthly": "monthly",
-                    "yearly": "yearly"
+                    "daily": "daily", "weekly": "weekly",
+                    "monthly": "monthly", "yearly": "yearly"
                 }
                 btype = map_type.get(chosen_type_label, "weekly")
                 amount = 0.0

@@ -10,7 +10,7 @@ from settings_mixin import SettingsMixin
 from transactions_mixin import TransactionsMixin
 
 
-class MoneyTrackerUltimate(
+class CoinsCasa(
     AuthMixin,
     NavigationMixin,
     DashboardMixin,
@@ -26,7 +26,7 @@ class MoneyTrackerUltimate(
 
         self.db = DatabaseManager()
 
-        self.title("MoneyTracker Ultimate")
+        self.title("CoinsCasa")
         self.geometry("1500x900")
         self.minsize(1100, 700)
 
