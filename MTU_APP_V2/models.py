@@ -44,6 +44,9 @@ class User:
     def set_nickname(self, nickname):
         self.__nickname = nickname
 
+    def set_username(self, username):
+        self.__username = username
+
     def set_budget_limit(self, amount):
         self.__budget_limit = amount
 

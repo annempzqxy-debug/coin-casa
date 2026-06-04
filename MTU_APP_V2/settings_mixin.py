@@ -583,14 +583,50 @@ class SettingsMixin(AppMixin):
         if hasattr(self, "nickname_display"):
             self.nickname_display.configure(text=new_name)
 
-
     def update_username_with_password(self):
-        # Stub to respect "Username change with password verification"
-        # Existing DB schema only supports update with direct SQL, but
-        # core auth logic is unchanged here to keep functionality stable.
-        pass
+        import hashlib
+        new_username = self.username_change_entry.get().strip()
+        current_password = self.username_current_password_entry.get().strip()
 
+        if not new_username or not current_password:
+            return
+
+        hashed = hashlib.sha256(current_password.encode()).hexdigest()
+        user = self.db.validate_user(self.current_user.get_username(), hashed)
+
+        if not user:
+            print("Incorrect current password.")
+            return
+
+        success = self.db.update_user_username(self.current_user.get_user_id(), new_username)
+        if success:
+            self.current_user.set_username(new_username)
+            self.username_change_entry.delete(0, "end")
+            self.username_current_password_entry.delete(0, "end")
+            print("Username updated successfully.")
+        else:
+            print("Failed to update username.")
 
     def update_password_with_verification(self):
-        # Stub to respect "Password change using current password"
-        pass
+        import hashlib
+        new_password = self.new_password_entry.get().strip()
+        current_password = self.current_password_for_change_entry.get().strip()
+
+        if not new_password or not current_password:
+            return
+
+        hashed_current = hashlib.sha256(current_password.encode()).hexdigest()
+        user = self.db.validate_user(self.current_user.get_username(), hashed_current)
+
+        if not user:
+            print("Incorrect current password.")
+            return
+
+        hashed_new = hashlib.sha256(new_password.encode()).hexdigest()
+        success = self.db.update_user_password(self.current_user.get_user_id(), hashed_new)
+        if success:
+            self.new_password_entry.delete(0, "end")
+            self.current_password_for_change_entry.delete(0, "end")
+            print("Password updated successfully.")
+        else:
+            print("Failed to update password.")
