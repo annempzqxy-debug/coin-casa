@@ -165,25 +165,41 @@ class BudgetMixin(AppMixin):
     def create_goals_page(self):
         page = ctk.CTkScrollableFrame(self.container)
 
+        # ── Page title with fire icon ─────────────────────────────
+        title_row = ctk.CTkFrame(page, fg_color="transparent")
+        title_row.pack(anchor="w", padx=20, pady=(20, 4))
+
         ctk.CTkLabel(
-            page,
+            title_row,
             text="Goals & Streaks",
             font=("Segoe UI", 30, "bold")
-        ).pack(anchor="w", padx=20, pady=(20, 8))
+        ).pack(side="left")
+
+        self.goals_fire_label = ctk.CTkLabel(
+            title_row,
+            text="  🔥",
+            font=("Segoe UI", 26),
+            text_color="#6B7280"   # grey until streak active
+        )
+        self.goals_fire_label.pack(side="left")
 
         # ── Streak header ─────────────────────────────────────────
+        streak_title_row = ctk.CTkFrame(page, fg_color="transparent")
+        streak_title_row.pack(anchor="w", padx=20, pady=(4, 6))
+
         self.streak_display = ctk.CTkLabel(
-            page,
+            streak_title_row,
             text="Current streak: 0 | Best: 0",
             font=("Segoe UI", 20, "bold"),
             text_color="#F59E0B"
         )
-        self.streak_display.pack(anchor="w", padx=20, pady=(0, 6))
+        self.streak_display.pack(side="left")
 
-        # ── Upgraded streak history box ───────────────────────────
+        # ── Modern streak history card ────────────────────────────
         streak_card = ctk.CTkFrame(page, corner_radius=16)
         streak_card.pack(fill="x", padx=20, pady=(0, 18))
 
+        # Header row of table
         streak_header = ctk.CTkFrame(streak_card, fg_color="transparent")
         streak_header.pack(fill="x", padx=16, pady=(12, 4))
 
@@ -193,14 +209,33 @@ class BudgetMixin(AppMixin):
             font=("Segoe UI", 15, "bold")
         ).pack(side="left")
 
-        self.streak_history_box = ctk.CTkTextbox(
+        # Column headers
+        col_frame = ctk.CTkFrame(streak_card, corner_radius=8, fg_color=("gray85", "#2d2d2d"))
+        col_frame.pack(fill="x", padx=16, pady=(0, 2))
+        col_frame.grid_columnconfigure(0, weight=2)
+        col_frame.grid_columnconfigure(1, weight=1)
+        col_frame.grid_columnconfigure(2, weight=2)
+        col_frame.grid_columnconfigure(3, weight=1)
+
+        for col_i, col_text in enumerate(["Period", "Status", "Spent / Limit", "Streak"]):
+            ctk.CTkLabel(
+                col_frame,
+                text=col_text,
+                font=("Segoe UI", 12, "bold"),
+                text_color="#9CA3AF"
+            ).grid(row=0, column=col_i, sticky="w", padx=10, pady=6)
+
+        # Scrollable rows container
+        self.streak_history_box = ctk.CTkScrollableFrame(
             streak_card,
-            height=150,
-            font=("Consolas", 13),
-            state="disabled",
-            corner_radius=10
+            height=130,
+            corner_radius=8,
+            fg_color="transparent"
         )
-        self.streak_history_box.pack(fill="x", padx=16, pady=(4, 14))
+        self.streak_history_box.pack(fill="x", padx=16, pady=(0, 14))
+
+        # Store summary labels for refresh
+        self._streak_summary_label = None
 
         # ── Savings Goals header ──────────────────────────────────
         ctk.CTkLabel(
@@ -323,30 +358,61 @@ class BudgetMixin(AppMixin):
                 text=f"Current streak: {summary['current']} | Best: {summary['best']}"
             )
 
-        self.streak_history_box.configure(state="normal")
-        self.streak_history_box.delete("1.0", "end")
-        self.streak_history_box.insert(
-            "end",
-            f"Current streak: {summary['current']} {summary['budget_type'] or ''} period(s)\n"
-            f"Best streak: {summary['best']} {summary['budget_type'] or ''} period(s)\n\n"
-        )
+        # Update fire icon color based on streak
+        if hasattr(self, "goals_fire_label"):
+            if summary["current"] > 0:
+                self.goals_fire_label.configure(text_color="#F97316")
+            else:
+                self.goals_fire_label.configure(text_color="#6B7280")
+
+        # Clear and repopulate the modern card table
+        for w in self.streak_history_box.winfo_children():
+            w.destroy()
 
         history = summary["history"]
         if not history:
-            self.streak_history_box.insert(
-                "end", "No streak history yet. Add expenses to start tracking.\n"
-            )
-        else:
-            for item in history[-12:]:
-                status = "OK" if item["status"] == "success" else "ENDED"
-                self.streak_history_box.insert(
-                    "end",
-                    f"{item['period']} | {status} | "
-                    f"₱{item['total']:,.2f} / ₱{item['limit']:,.2f} | "
-                    f"streak {item['streak_after']}\n"
-                )
+            ctk.CTkLabel(
+                self.streak_history_box,
+                text="No streak history yet. Add expenses to start tracking.",
+                font=("Segoe UI", 13),
+                text_color="#9CA3AF"
+            ).pack(anchor="w", padx=8, pady=14)
+            return
 
-        self.streak_history_box.configure(state="disabled")
+        for item in reversed(history[-12:]):
+            is_success = item["status"] == "success"
+            status_text = "✓  OK" if is_success else "✗  ENDED"
+            status_color = "#22C55E" if is_success else "#EF4444"
+
+            row = ctk.CTkFrame(self.streak_history_box, corner_radius=8, height=36)
+            row.pack(fill="x", padx=0, pady=2)
+            row.grid_columnconfigure(0, weight=2)
+            row.grid_columnconfigure(1, weight=1)
+            row.grid_columnconfigure(2, weight=2)
+            row.grid_columnconfigure(3, weight=1)
+            row.grid_propagate(False)
+
+            ctk.CTkLabel(
+                row, text=item["period"],
+                font=("Segoe UI", 12), text_color="#D1D5DB"
+            ).grid(row=0, column=0, sticky="w", padx=10, pady=4)
+
+            ctk.CTkLabel(
+                row, text=status_text,
+                font=("Segoe UI", 12, "bold"), text_color=status_color
+            ).grid(row=0, column=1, sticky="w", padx=10, pady=4)
+
+            ctk.CTkLabel(
+                row,
+                text=f"₱{item['total']:,.2f} / ₱{item['limit']:,.2f}",
+                font=("Segoe UI", 12), text_color="#9CA3AF"
+            ).grid(row=0, column=2, sticky="w", padx=10, pady=4)
+
+            ctk.CTkLabel(
+                row, text=f"🔥 {item['streak_after']}",
+                font=("Segoe UI", 12, "bold"),
+                text_color="#F59E0B" if item["streak_after"] > 0 else "#6B7280"
+            ).grid(row=0, column=3, sticky="w", padx=10, pady=4)
 
     # =====================
     # GOAL DB HELPERS
@@ -698,3 +764,4 @@ class BudgetMixin(AppMixin):
             self.load_goals()
         except Exception as e:
             print("Create goal error:", e)
+
