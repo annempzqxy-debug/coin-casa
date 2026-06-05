@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 
-
 class User:
     def __init__(self, user_id, username, nickname,
                  budget_limit=0, budget_type=None,
@@ -44,9 +43,6 @@ class User:
     def set_nickname(self, nickname):
         self.__nickname = nickname
 
-    def set_username(self, username):
-        self.__username = username
-
     def set_budget_limit(self, amount):
         self.__budget_limit = amount
 
@@ -59,7 +55,6 @@ class User:
     def set_streak(self, streak):
         self.__streak_current = streak
 
-
 class Transaction(ABC):
     def __init__(self, amount, category, description, date):
         self.amount = amount
@@ -71,11 +66,9 @@ class Transaction(ABC):
     def transaction_type(self):
         pass
 
-
 class Expense(Transaction):
     def transaction_type(self):
         return "Expense"
-
 
 class Income(Transaction):
     def transaction_type(self):

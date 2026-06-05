@@ -5,25 +5,15 @@ from config import DB
 from date_utils import INVALID_DATE_MESSAGE, parse_flexible_date
 from models import Expense
 
-
 from mixin_base import AppMixin
+
 class TransactionsMixin(AppMixin):
 
     def create_transactions_page(self):
-        page = ctk.CTkScrollableFrame(
-            self.container,
-            fg_color="transparent"
-        )
+        page = ctk.CTkScrollableFrame(self.container, fg_color="transparent")
 
-        header = ctk.CTkFrame(
-            page,
-            corner_radius=24
-        )
-        header.pack(
-            fill="x",
-            padx=20,
-            pady=(20, 15)
-        )
+        header = ctk.CTkFrame(page, corner_radius=24)
+        header.pack(fill="x", padx=20, pady=(20, 15))
 
         ctk.CTkLabel(
             header,
@@ -35,20 +25,12 @@ class TransactionsMixin(AppMixin):
         filters_frame.pack(side="right", padx=20)
 
         ctk.CTkLabel(
-            filters_frame,
-            text="Filter:",
-            font=("Segoe UI", 14, "bold")
+            filters_frame, text="Filter:", font=("Segoe UI", 14, "bold")
         ).pack(anchor="e")
 
         self.transaction_time_filter = ctk.CTkOptionMenu(
             filters_frame,
-            values=[
-                "All Time",
-                "Today",
-                "This Week",
-                "This Month",
-                "This Year"
-            ],
+            values=["All Time", "Today", "This Week", "This Month", "This Year"],
             command=lambda _: self.search_transactions()
         )
         self.transaction_time_filter.set("All Time")
@@ -61,10 +43,7 @@ class TransactionsMixin(AppMixin):
             height=40
         )
         self.search_entry.pack(side="right", padx=20)
-        self.search_entry.bind(
-            "<KeyRelease>",
-            lambda e: self.search_transactions()
-        )
+        self.search_entry.bind("<KeyRelease>", lambda e: self.search_transactions())
 
         ctk.CTkButton(
             page,
@@ -72,41 +51,15 @@ class TransactionsMixin(AppMixin):
             height=48,
             font=("Segoe UI", 16, "bold"),
             command=lambda: self.transaction_popup("Expense")
-        ).pack(
-            fill="x",
-            padx=20,
-            pady=(0, 15)
-        )
+        ).pack(fill="x", padx=20, pady=(0, 15))
 
-        delete_frame = ctk.CTkFrame(page, fg_color="transparent")
-        delete_frame.pack(fill="x", padx=20, pady=(0, 10))
+        # Transaction ID delete row REMOVED per user request
 
-        self.delete_id_entry = ctk.CTkEntry(
-            delete_frame,
-            placeholder_text="Transaction ID to delete",
-            width=180,
-            height=40
-        )
-        self.delete_id_entry.pack(side="left", padx=(0, 10))
-
-        ctk.CTkButton(
-            delete_frame,
-            text="Delete by ID",
-            height=40,
-            command=self.handle_delete_by_id
-        ).pack(side="left")
-
-        # Modern card list instead of textbox, no "Type" column
         self.transactions_list_frame = ctk.CTkScrollableFrame(
-            page,
-            height=650,
-            corner_radius=18
+            page, height=650, corner_radius=18
         )
         self.transactions_list_frame.pack(
-            fill="both",
-            expand=True,
-            padx=20,
-            pady=(0, 20)
+            fill="both", expand=True, padx=20, pady=(0, 20)
         )
 
         return page
@@ -115,75 +68,48 @@ class TransactionsMixin(AppMixin):
     # TRANSACTION POPUP
     # =====================
 
-
     def transaction_popup(self, ttype):
         win = ctk.CTkToplevel(self)
         win.title(f"Add {ttype}")
         win.geometry("430x530")
 
         ctk.CTkLabel(
-            win,
-            text=f"New {ttype}",
-            font=("Segoe UI", 20, "bold")
+            win, text=f"New {ttype}", font=("Segoe UI", 20, "bold")
         ).pack(pady=15)
 
-        # Amount — Required
         ctk.CTkLabel(
-            win,
-            text="* Required",
-            font=("Segoe UI", 11, "bold"),
-            text_color="#EF4444",
-            anchor="w"
+            win, text="* Required",
+            font=("Segoe UI", 11, "bold"), text_color="#EF4444", anchor="w"
         ).pack(fill="x", padx=55, pady=(0, 2))
-        amount_entry = ctk.CTkEntry(
-            win,
-            placeholder_text="Amount"
-        )
+
+        amount_entry = ctk.CTkEntry(win, placeholder_text="Amount")
         amount_entry.pack(pady=(0, 10))
 
         self.categories = self.db.get_categories_for_user(self.current_user.get_user_id())
-        category_combo = ctk.CTkComboBox(
-            win,
-            values=self.categories
-        )
+        category_combo = ctk.CTkComboBox(win, values=self.categories)
         category_combo.pack(pady=10)
         if self.categories:
             category_combo.set(self.categories[0])
 
-        # Description — Not Required
         ctk.CTkLabel(
-            win,
-            text="* Not required",
-            font=("Segoe UI", 11, "bold"),
-            text_color="#9CA3AF",
-            anchor="w"
+            win, text="* Not required",
+            font=("Segoe UI", 11, "bold"), text_color="#9CA3AF", anchor="w"
         ).pack(fill="x", padx=55, pady=(4, 2))
-        desc_entry = ctk.CTkEntry(
-            win,
-            placeholder_text=f"{ttype} Description"
-        )
+
+        desc_entry = ctk.CTkEntry(win, placeholder_text=f"{ttype} Description")
         desc_entry.pack(pady=(0, 10))
 
-        # Date — Not Required
         ctk.CTkLabel(
-            win,
-            text="* Not required",
-            font=("Segoe UI", 11, "bold"),
-            text_color="#9CA3AF",
-            anchor="w"
+            win, text="* Not required",
+            font=("Segoe UI", 11, "bold"), text_color="#9CA3AF", anchor="w"
         ).pack(fill="x", padx=55, pady=(4, 2))
-        date_entry = ctk.CTkEntry(
-            win,
-            placeholder_text="Date"
-        )
+
+        date_entry = ctk.CTkEntry(win, placeholder_text="Date")
         date_entry.pack(pady=(0, 10))
 
         input_status = ctk.CTkLabel(
-            win,
-            text="",
-            font=("Segoe UI", 12),
-            text_color="#EF4444",
-            wraplength=360
+            win, text="", font=("Segoe UI", 12),
+            text_color="#EF4444", wraplength=360
         )
         input_status.pack(pady=(0, 5))
 
@@ -199,21 +125,15 @@ class TransactionsMixin(AppMixin):
                     return
 
                 desc = desc_entry.get().strip()
-
                 try:
                     custom_date = parse_flexible_date(date_entry.get())
                 except ValueError:
                     input_status.configure(text=INVALID_DATE_MESSAGE)
                     return
 
-                # Always save as Expense to match "expenses only"
                 transaction = Expense(
-                    amount,
-                    category_combo.get(),
-                    desc,
-                    custom_date
+                    amount, category_combo.get(), desc, custom_date
                 )
-
                 self.db.add_transaction(
                     self.current_user.get_user_id(),
                     transaction.transaction_type(),
@@ -223,20 +143,16 @@ class TransactionsMixin(AppMixin):
                     custom_date=transaction.date
                 )
 
-                streak_notifications = self.db.update_streak_for_user(self.current_user.get_user_id())
-
+                streak_notifications = self.db.update_streak_for_user(
+                    self.current_user.get_user_id()
+                )
                 win.destroy()
                 self.show_streak_notifications(streak_notifications)
                 self.refresh_everything()
-                self.check_budget_warning()
             except Exception as e:
                 print("Transaction save error:", e)
 
-        ctk.CTkButton(
-            win,
-            text="Save Transaction",
-            command=save
-        ).pack(pady=15)
+        ctk.CTkButton(win, text="Save Transaction", command=save).pack(pady=15)
 
     def show_streak_notifications(self, notifications):
         if not notifications:
@@ -256,10 +172,8 @@ class TransactionsMixin(AppMixin):
             alert.grab_set()
 
             ctk.CTkLabel(
-                alert,
-                text="Your saving streak ended",
-                font=("Segoe UI", 22, "bold"),
-                text_color="#EF4444"
+                alert, text="Your saving streak ended",
+                font=("Segoe UI", 22, "bold"), text_color="#EF4444"
             ).pack(pady=(25, 10), padx=20)
 
             ctk.CTkLabel(
@@ -274,18 +188,13 @@ class TransactionsMixin(AppMixin):
             ).pack(padx=20, pady=(0, 20))
 
             ctk.CTkButton(
-                alert,
-                text="OK",
-                width=140,
-                command=alert.destroy
+                alert, text="OK", width=140, command=alert.destroy
             ).pack(pady=(0, 20))
             break
-
 
     # =====================
     # FILTERING HELPERS
     # =====================
-
 
     def _filter_by_time_range(self, rows, time_filter):
         if time_filter == "All Time":
@@ -317,7 +226,6 @@ class TransactionsMixin(AppMixin):
 
         return filtered
 
-
     def search_transactions(self):
         if not self.current_user or self.current_user.get_user_id() is None:
             return
@@ -330,7 +238,6 @@ class TransactionsMixin(AppMixin):
             time_filter = self.transaction_time_filter.get()
         rows = self._filter_by_time_range(rows, time_filter)
 
-        # render into card layout
         if hasattr(self, "transactions_list_frame"):
             for w in self.transactions_list_frame.winfo_children():
                 w.destroy()
@@ -347,65 +254,41 @@ class TransactionsMixin(AppMixin):
             total += amount
             count += 1
 
-            card = ctk.CTkFrame(
-                self.transactions_list_frame,
-                corner_radius=18
-            )
+            card = ctk.CTkFrame(self.transactions_list_frame, corner_radius=18)
             card.pack(fill="x", padx=10, pady=6)
 
             top_row = ctk.CTkFrame(card, fg_color="transparent")
             top_row.pack(fill="x", padx=15, pady=(10, 4))
 
-            # Simple icon / logo
-            icon_label = ctk.CTkLabel(
-                top_row,
-                text="●",
-                font=("Segoe UI", 18)
-            )
-            icon_label.pack(side="left", padx=(0, 8))
+            ctk.CTkLabel(
+                top_row, text="●", font=("Segoe UI", 18)
+            ).pack(side="left", padx=(0, 8))
 
-            name_label = ctk.CTkLabel(
-                top_row,
-                text=desc,
-                font=("Segoe UI", 14, "bold")
-            )
-            name_label.pack(side="left")
+            ctk.CTkLabel(
+                top_row, text=desc, font=("Segoe UI", 14, "bold")
+            ).pack(side="left")
 
-            amount_label = ctk.CTkLabel(
-                top_row,
-                text=f"₱{amount:,.2f}",
-                font=("Segoe UI", 14, "bold"),
-                text_color="#EF4444"
-            )
-            amount_label.pack(side="right")
+            ctk.CTkLabel(
+                top_row, text=f"₱{amount:,.2f}",
+                font=("Segoe UI", 14, "bold"), text_color="#EF4444"
+            ).pack(side="right")
 
             bottom_row = ctk.CTkFrame(card, fg_color="transparent")
             bottom_row.pack(fill="x", padx=15, pady=(0, 10))
 
-            category_label = ctk.CTkLabel(
-                bottom_row,
-                text=category,
-                font=("Segoe UI", 12),
-                text_color="#9CA3AF"
-            )
-            category_label.pack(side="left")
+            ctk.CTkLabel(
+                bottom_row, text=category,
+                font=("Segoe UI", 12), text_color="#9CA3AF"
+            ).pack(side="left")
 
-            date_label = ctk.CTkLabel(
-                bottom_row,
-                text=dstr,
-                font=("Segoe UI", 12),
-                text_color="#9CA3AF"
-            )
-            date_label.pack(side="right")
+            ctk.CTkLabel(
+                bottom_row, text=dstr,
+                font=("Segoe UI", 12), text_color="#9CA3AF"
+            ).pack(side="right")
 
-        # Simple footer card for total
         if hasattr(self, "transactions_list_frame"):
-            footer = ctk.CTkFrame(
-                self.transactions_list_frame,
-                corner_radius=18
-            )
+            footer = ctk.CTkFrame(self.transactions_list_frame, corner_radius=18)
             footer.pack(fill="x", padx=10, pady=10)
-
             ctk.CTkLabel(
                 footer,
                 text=f"Total: ₱{total:,.2f}  ({count} entries)",
@@ -415,7 +298,6 @@ class TransactionsMixin(AppMixin):
     # =====================
     # DASHBOARD REFRESH
     # =====================
-
 
     def load_transactions(self):
         if not self.current_user or self.current_user.get_user_id() is None:
@@ -433,36 +315,23 @@ class TransactionsMixin(AppMixin):
             if row[2] == "Expense" and row[4] in self.category_totals:
                 self.category_totals[row[4]] += row[3]
 
-    # =====================
-    # SUMMARY / BUDGET PROGRESS
-    # =====================
-
-
     def delete_latest_transaction(self):
         if not self.current_user or self.current_user.get_user_id() is None:
             return
 
         conn = sqlite3.connect(DB)
         cur = conn.cursor()
-
         cur.execute("""
         DELETE FROM transactions
-        WHERE id = (
-            SELECT MAX(id)
-            FROM transactions
-            WHERE user_id = ?
-        )
+        WHERE id = (SELECT MAX(id) FROM transactions WHERE user_id = ?)
         """, (self.current_user.get_user_id(),))
-
         conn.commit()
         conn.close()
         self.refresh_everything()
 
-
     def delete_transaction_by_id(self, tid):
         if not self.current_user or self.current_user.get_user_id() is None:
             return
-
         conn = sqlite3.connect(DB)
         cur = conn.cursor()
         cur.execute(
@@ -473,8 +342,9 @@ class TransactionsMixin(AppMixin):
         conn.close()
         self.refresh_everything()
 
-
     def handle_delete_by_id(self):
+        if not hasattr(self, "delete_id_entry"):
+            return
         text = self.delete_id_entry.get().strip()
         if not text.isdigit():
             print("Invalid ID")

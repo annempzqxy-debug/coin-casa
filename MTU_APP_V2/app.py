@@ -10,7 +10,7 @@ from settings_mixin import SettingsMixin
 from transactions_mixin import TransactionsMixin
 
 
-class MoneyTrackerUltimate(
+class COINSCASA(
     AuthMixin,
     NavigationMixin,
     DashboardMixin,
@@ -26,9 +26,10 @@ class MoneyTrackerUltimate(
 
         self.db = DatabaseManager()
 
-        self.title("MoneyTracker Ultimate")
+        self.title("COINSCASA")
         self.geometry("1500x900")
         self.minsize(1100, 700)
+        self.after(0, lambda: self.state("zoomed"))  # open maximized
 
         self.categories = []
         self.active_button = None
@@ -50,3 +51,4 @@ class MoneyTrackerUltimate(
         self.grid_rowconfigure(0, weight=1)
 
         self.create_auth_page()
+
