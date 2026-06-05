@@ -18,6 +18,7 @@ class NavigationMixin(AppMixin):
         self.show_page("Overview")
         _ = self.db.update_streak_for_user(user_id)
         self.refresh_everything()
+        self.check_budget_warning()
 
     # =====================
     # SIDEBAR
