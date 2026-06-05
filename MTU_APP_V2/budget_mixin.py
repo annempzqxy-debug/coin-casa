@@ -93,6 +93,56 @@ class BudgetMixin(AppMixin):
             command=apply_change
         ).pack(side="left", padx=8)
 
+    def check_budget_warning(self):
+        if not self.current_user or self.current_user.get_user_id() is None:
+            return
+        if not self.current_notifications_enabled:
+            return
+
+        spent, limit, remaining, over, amount_over, btype = \
+            self.db.get_budget_status_for_user(self.current_user.get_user_id())
+
+        if limit <= 0 or over:
+            return
+
+        percent_remaining = (remaining / limit) * 100
+
+        if 0 < percent_remaining <= 15:
+            self._show_budget_warning_popup(spent, limit, remaining, percent_remaining, btype)
+
+    def _show_budget_warning_popup(self, spent, limit, remaining, percent_remaining, btype):
+        popup = ctk.CTkToplevel(self)
+        popup.title("Budget Warning")
+        popup.geometry("420x220")
+        popup.grab_set()
+
+        ctk.CTkLabel(
+            popup,
+            text="⚠️ Budget Almost Exhausted!",
+            font=("Segoe UI", 20, "bold"),
+            text_color="#F97316"
+        ).pack(pady=(25, 8), padx=20)
+
+        ctk.CTkLabel(
+            popup,
+            text=(
+                f"You have only ₱{remaining:,.2f} left "
+                f"({percent_remaining:.1f}% remaining)\n"
+                f"out of your {btype} budget of ₱{limit:,.2f}.\n"
+                f"Spent so far: ₱{spent:,.2f}"
+            ),
+            font=("Segoe UI", 14),
+            justify="center",
+            wraplength=370
+        ).pack(padx=20, pady=(0, 20))
+
+        ctk.CTkButton(
+            popup,
+            text="Got it",
+            width=160,
+            height=40,
+            command=popup.destroy
+        ).pack()
 
     def _summary_filter_range(self):
         selected = "Today"
