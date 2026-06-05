@@ -385,14 +385,20 @@ class AuthMixin(AppMixin):
             if self.current_user and self.current_user.get_user_id() is not None:
                 self.db.update_user_notifications(self.current_user.get_user_id(), True)
             reminder.destroy()
-            self.show_budget_setup_page()
+            if self.current_budget_limit and self.current_budget_limit > 0:
+                self.initialize_main_app()
+            else:
+                self.show_budget_setup_page()
 
         def skip_reminder():
             self.current_notifications_enabled = 0
             if self.current_user and self.current_user.get_user_id() is not None:
                 self.db.update_user_notifications(self.current_user.get_user_id(), False)
             reminder.destroy()
-            self.show_budget_setup_page()
+            if self.current_budget_limit and self.current_budget_limit > 0:
+                self.initialize_main_app()
+            else:
+                self.show_budget_setup_page()
 
         ctk.CTkButton(
             button_frame, text="✓ Enable", width=140, height=40,
