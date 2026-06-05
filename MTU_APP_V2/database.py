@@ -231,34 +231,6 @@ class DatabaseManager:
         finally:
             conn.close()
 
-    def update_user_username(self, user_id, new_username):
-        conn = sqlite3.connect(DB)
-        cur = conn.cursor()
-        try:
-            cur.execute("UPDATE users SET username=? WHERE id=?", (new_username, user_id))
-            conn.commit()
-            return True
-        except Exception as e:
-            print("Update username error:", e)
-            conn.rollback()
-            return False
-        finally:
-            conn.close()
-
-    def update_user_password(self, user_id, new_password_hashed):
-        conn = sqlite3.connect(DB)
-        cur = conn.cursor()
-        try:
-            cur.execute("UPDATE users SET password=? WHERE id=?", (new_password_hashed, user_id))
-            conn.commit()
-            return True
-        except Exception as e:
-            print("Update password error:", e)
-            conn.rollback()
-            return False
-        finally:
-            conn.close()
-
     def update_user_budget(self, user_id, budget_type, amount):
         conn = sqlite3.connect(DB)
         cur = conn.cursor()
@@ -700,5 +672,3 @@ class DatabaseManager:
                 })
 
         return notifications
-
-

@@ -1,11 +1,22 @@
 import customtkinter as ctk
-from PIL import Image
+from PIL import Image, ImageDraw
 from tkinter import filedialog
 
 from mixin_base import AppMixin
 
-# Max width for all content cards — narrower, cleaner
-_CARD_PAD = 120   # padx for cards inside the scrollframe
+_CARD_PAD = 120
+
+
+def crop_to_circle(image: Image.Image, size: int) -> Image.Image:
+    """Resize image and crop it into a perfect circle with antialiasing."""
+    # Resize to square first, then apply circular mask
+    image = image.convert("RGBA").resize((size, size), Image.LANCZOS)
+    mask = Image.new("L", (size, size), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.ellipse((0, 0, size, size), fill=255)
+    result = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    result.paste(image, (0, 0), mask)
+    return result
 
 
 class SettingsMixin(AppMixin):
@@ -25,7 +36,6 @@ class SettingsMixin(AppMixin):
             profile_main, text="Profile", font=("Segoe UI", 18, "bold")
         ).pack(anchor="w", padx=18, pady=(16, 8))
 
-        # Helper: two entries side by side
         def _two_entries(parent, attr1, ph1, attr2, ph2):
             row = ctk.CTkFrame(parent, fg_color="transparent")
             row.pack(fill="x", padx=18, pady=(0, 6))
@@ -38,7 +48,6 @@ class SettingsMixin(AppMixin):
             setattr(self, attr1, e1)
             setattr(self, attr2, e2)
 
-        # Username + current password side by side
         _two_entries(
             profile_main,
             "username_change_entry", "New Username",
@@ -50,7 +59,6 @@ class SettingsMixin(AppMixin):
             command=self.update_username_with_password
         ).pack(anchor="w", padx=18, pady=(0, 10))
 
-        # New password + current password side by side with show/hide each
         def _pw_pair(parent, attr1, ph1, attr2, ph2):
             row = ctk.CTkFrame(parent, fg_color="transparent")
             row.pack(fill="x", padx=18, pady=(0, 6))
@@ -243,7 +251,7 @@ class SettingsMixin(AppMixin):
             self.db.update_user_notifications(self.current_user.get_user_id(), new_val)
 
     # =====================
-    # CATEGORIES PAGE — side-by-side add/delete panels
+    # CATEGORIES PAGE
     # =====================
 
     def create_categories_page(self):
@@ -260,7 +268,6 @@ class SettingsMixin(AppMixin):
             text_color="#9CA3AF"
         ).pack(anchor="w", padx=_CARD_PAD, pady=(0, 10))
 
-        # Categories list
         self.categories_list_container = ctk.CTkFrame(page, corner_radius=18)
         self.categories_list_container.pack(
             fill="x", padx=_CARD_PAD, pady=(0, 10)
@@ -271,13 +278,11 @@ class SettingsMixin(AppMixin):
         )
         self.categories_listbox.pack(fill="x", padx=12, pady=12)
 
-        # ── Add & Delete side by side ──────────────────────────────
         panels_row = ctk.CTkFrame(page, fg_color="transparent")
         panels_row.pack(fill="x", padx=_CARD_PAD, pady=(0, 20))
         panels_row.grid_columnconfigure(0, weight=1, uniform="cat_panels")
         panels_row.grid_columnconfigure(1, weight=1, uniform="cat_panels")
 
-        # Add panel
         add_frame = ctk.CTkFrame(panels_row, corner_radius=18)
         add_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
 
@@ -300,7 +305,6 @@ class SettingsMixin(AppMixin):
             command=self.add_new_category
         ).pack(fill="x", padx=14, pady=(4, 12))
 
-        # Delete panel
         delete_frame = ctk.CTkFrame(panels_row, corner_radius=18)
         delete_frame.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
 
@@ -403,18 +407,24 @@ class SettingsMixin(AppMixin):
             self.refresh_everything()
 
     # =====================
-    # PROFILE PICTURE / THEME
+    # PROFILE PICTURE
     # =====================
 
     def render_profile_picture(self):
+        """Render the profile picture cropped to a circle."""
         if not getattr(self, "profile_image_source", None):
             return
         size = int(getattr(self, "profile_image_size", 110))
-        image = self.profile_image_source.copy().resize((size, size))
+        circular = crop_to_circle(self.profile_image_source.copy(), size)
         profile_image = ctk.CTkImage(
-            light_image=image, dark_image=image, size=(size, size)
+            light_image=circular, dark_image=circular, size=(size, size)
         )
-        self.profile_label.configure(text="", image=profile_image)
+        # Make the frame and label transparent so only the circular image shows
+        if hasattr(self, "profile_frame"):
+            self.profile_frame.configure(fg_color="transparent")
+        self.profile_label.configure(
+            text="", image=profile_image, fg_color="transparent"
+        )
         self.profile_label._image = profile_image
         self.profile_label.image = profile_image
 
@@ -477,46 +487,32 @@ class SettingsMixin(AppMixin):
         import hashlib
         new_username = self.username_change_entry.get().strip()
         current_password = self.username_current_password_entry.get().strip()
-
         if not new_username or not current_password:
             return
-
         hashed = hashlib.sha256(current_password.encode()).hexdigest()
         user = self.db.validate_user(self.current_user.get_username(), hashed)
-
         if not user:
             print("Incorrect current password.")
             return
-
         success = self.db.update_user_username(self.current_user.get_user_id(), new_username)
         if success:
             self.current_user.set_username(new_username)
             self.username_change_entry.delete(0, "end")
             self.username_current_password_entry.delete(0, "end")
-            print("Username updated successfully.")
-        else:
-            print("Failed to update username.")
 
     def update_password_with_verification(self):
         import hashlib
         new_password = self.new_password_entry.get().strip()
         current_password = self.current_password_for_change_entry.get().strip()
-
         if not new_password or not current_password:
             return
-
         hashed_current = hashlib.sha256(current_password.encode()).hexdigest()
         user = self.db.validate_user(self.current_user.get_username(), hashed_current)
-
         if not user:
             print("Incorrect current password.")
             return
-
         hashed_new = hashlib.sha256(new_password.encode()).hexdigest()
         success = self.db.update_user_password(self.current_user.get_user_id(), hashed_new)
         if success:
             self.new_password_entry.delete(0, "end")
             self.current_password_for_change_entry.delete(0, "end")
-            print("Password updated successfully.")
-        else:
-            print("Failed to update password.")

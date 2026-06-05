@@ -149,7 +149,6 @@ class TransactionsMixin(AppMixin):
                 win.destroy()
                 self.show_streak_notifications(streak_notifications)
                 self.refresh_everything()
-                self.check_budget_warning()
             except Exception as e:
                 print("Transaction save error:", e)
 

@@ -1,6 +1,6 @@
-from app import CoinsCasa
+from app import COINSCASA
 
 
 if __name__ == "__main__":
-    app = CoinsCasa()
+    app = COINSCASA()
     app.mainloop()

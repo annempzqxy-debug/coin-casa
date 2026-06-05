@@ -10,7 +10,7 @@ from settings_mixin import SettingsMixin
 from transactions_mixin import TransactionsMixin
 
 
-class CoinsCasa(
+class COINSCASA(
     AuthMixin,
     NavigationMixin,
     DashboardMixin,
@@ -26,7 +26,7 @@ class CoinsCasa(
 
         self.db = DatabaseManager()
 
-        self.title("CoinsCasa")
+        self.title("COINSCASA")
         self.geometry("1500x900")
         self.minsize(1100, 700)
         self.after(0, lambda: self.state("zoomed"))  # open maximized
@@ -51,3 +51,4 @@ class CoinsCasa(
         self.grid_rowconfigure(0, weight=1)
 
         self.create_auth_page()
+
