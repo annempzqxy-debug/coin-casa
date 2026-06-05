@@ -389,6 +389,20 @@ class ReportsMixin(AppMixin):
 
         return "success", f"Successful {budget_type} period: ₱{item['total']:,.2f} / ₱{limit:,.2f}"
 
+    def _is_streak_period_complete(self, item, today, budget_type):
+        if not item:
+            return False
+
+        period_end = item.get("end")
+        if period_end and period_end < today:
+            return True
+
+        if budget_type == "daily":
+            return False
+
+        dates = item.get("dates") or []
+        return bool(period_end and dates and max(dates) >= period_end)
+
     def update_streak_calendar(self):
         if not hasattr(self, "calendar_grid") or not self.current_user \
                 or self.current_user.get_user_id() is None:
@@ -399,8 +413,11 @@ class ReportsMixin(AppMixin):
 
         today = date.today()
         user_id = self.current_user.get_user_id()
-        budget_type = self.current_budget_type or "weekly"
-        budget_limit = float(self.current_budget_limit or self.total_limit or 0)
+        summary = self.refresh_streak_state()
+        budget_type = summary["budget_type"] or self.current_budget_type or "weekly"
+        budget_limit = float(
+            summary["limit"] or self.current_budget_limit or self.total_limit or 0
+        )
         visible_year = getattr(self, "calendar_visible_year", today.year)
         visible_month = getattr(self, "calendar_visible_month", today.month)
         month_name = calendar.month_name[visible_month]
@@ -416,8 +433,10 @@ class ReportsMixin(AppMixin):
             if d.year == visible_year and d.month == visible_month:
                 daily_totals[d.isoformat()] = daily_totals.get(d.isoformat(), 0.0) + row[3]
 
-        summary = self.db.get_streak_summary_for_user(user_id)
-        period_status = {item["period"]: item["status"] for item in summary["history"]}
+        period_items = {item["period"]: item for item in summary["history"]}
+        period_status = {
+            period: item["status"] for period, item in period_items.items()
+        }
         current_period_key = self.db.get_period_key(budget_type, today.isoformat())
 
         self.calendar_month.configure(
@@ -451,16 +470,20 @@ class ReportsMixin(AppMixin):
         month_marker: str = ""
         if budget_type == "monthly":
             month_key_str = f"{visible_year}-{visible_month:02d}"
+            month_item = period_items.get(month_key_str)
             month_status = period_status.get(month_key_str)
-            if month_key_str == current_period_key:
-                month_color = "#374151"
-                month_marker = ""
-            elif month_status == "success":
-                month_color = "#F59E0B"
-                month_marker = "OK"
-            elif month_status == "failed":
+            if month_status == "failed":
                 month_color = "#6B7280"
                 month_marker = "Ended"
+            elif month_status == "success" and (
+                month_key_str != current_period_key
+                or self._is_streak_period_complete(month_item, today, budget_type)
+            ):
+                month_color = "#F59E0B"
+                month_marker = "OK"
+            elif month_key_str == current_period_key:
+                month_color = "#374151"
+                month_marker = ""
 
         for row_i, week in enumerate(cal):
             week_color: str = "#374151"
@@ -471,16 +494,20 @@ class ReportsMixin(AppMixin):
                 if first_day_num is not None:
                     week_d = date(visible_year, visible_month, first_day_num)
                     week_period_key = self.db.get_period_key("weekly", week_d.isoformat())
+                    week_item = period_items.get(week_period_key)
                     week_status = period_status.get(week_period_key)
-                    if week_period_key == current_period_key:
-                        week_color = "#374151"
-                        week_marker = ""
-                    elif week_status == "success":
-                        week_color = "#F59E0B"
-                        week_marker = "OK"
-                    elif week_status == "failed":
+                    if week_status == "failed":
                         week_color = "#6B7280"
                         week_marker = "Ended"
+                    elif week_status == "success" and (
+                        week_period_key != current_period_key
+                        or self._is_streak_period_complete(week_item, today, budget_type)
+                    ):
+                        week_color = "#F59E0B"
+                        week_marker = "OK"
+                    elif week_period_key == current_period_key:
+                        week_color = "#374151"
+                        week_marker = ""
 
             for col_i, day_num in enumerate(week):
                 if day_num == 0:
@@ -499,17 +526,21 @@ class ReportsMixin(AppMixin):
 
                 if budget_type == "daily":
                     day_period_key = self.db.get_period_key("daily", d.isoformat())
+                    day_item = period_items.get(day_period_key)
                     day_status = period_status.get(day_period_key)
-                    if d > today:
+                    if day_status == "failed":
+                        color = "#6B7280"
+                        marker = "Ended"
+                    elif d > today:
                         color = "#374151"
                     elif day_period_key == current_period_key:
                         color = "#374151"
-                    elif day_status == "success":
+                    elif day_status == "success" and (
+                        day_period_key != current_period_key
+                        or self._is_streak_period_complete(day_item, today, budget_type)
+                    ):
                         color = "#F59E0B"
                         marker = "OK"
-                    elif day_status == "failed":
-                        color = "#6B7280"
-                        marker = "Ended"
                 elif budget_type == "weekly":
                     color = week_color
                     marker = week_marker
@@ -518,15 +549,19 @@ class ReportsMixin(AppMixin):
                     marker = month_marker
                 else:
                     year_key_str = str(visible_year)
+                    year_item = period_items.get(year_key_str)
                     year_status = period_status.get(year_key_str)
-                    if year_key_str == current_period_key:
-                        color = "#374151"
-                    elif year_status == "success":
-                        color = "#F59E0B"
-                        marker = "OK"
-                    elif year_status == "failed":
+                    if year_status == "failed":
                         color = "#6B7280"
                         marker = "Ended"
+                    elif year_status == "success" and (
+                        year_key_str != current_period_key
+                        or self._is_streak_period_complete(year_item, today, budget_type)
+                    ):
+                        color = "#F59E0B"
+                        marker = "OK"
+                    elif year_key_str == current_period_key:
+                        color = "#374151"
 
                 box = ctk.CTkFrame(
                     self.calendar_grid, width=150, height=118,

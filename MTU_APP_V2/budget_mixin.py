@@ -7,6 +7,50 @@ from mixin_base import AppMixin
 
 class BudgetMixin(AppMixin):
 
+    def refresh_streak_state(self):
+        if not self.current_user or self.current_user.get_user_id() is None:
+            return {
+                "current": 0, "best": 0, "history": [],
+                "budget_type": None, "limit": 0.0
+            }
+
+        summary = self.db.sync_streak_summary_for_user(
+            self.current_user.get_user_id()
+        )
+        self.current_streak_current = summary["current"]
+        self.current_streak_best = summary["best"]
+        self.current_budget_type = summary["budget_type"]
+        self.current_budget_limit = summary["limit"]
+        self.total_limit = summary["limit"]
+
+        if hasattr(self.current_user, "set_streak"):
+            self.current_user.set_streak(summary["current"])
+        if hasattr(self.current_user, "set_best_streak"):
+            self.current_user.set_best_streak(summary["best"])
+        if hasattr(self.current_user, "set_budget_type"):
+            self.current_user.set_budget_type(summary["budget_type"])
+        if hasattr(self.current_user, "set_budget_limit"):
+            self.current_user.set_budget_limit(summary["limit"])
+
+        if hasattr(self, "streak_value"):
+            self.streak_value.configure(
+                text=f"Current: {summary['current']} | Best: {summary['best']}"
+            )
+
+        if hasattr(self, "streak_display"):
+            self.streak_display.configure(
+                text=f"Current streak: {summary['current']} | Best: {summary['best']}"
+            )
+
+        streak_active = summary["current"] > 0
+        fire_icon = self.get_flame_icon(streak_active, 26)
+        if hasattr(self, "streak_fire_label"):
+            self.streak_fire_label.configure(text="", image=fire_icon)
+        if hasattr(self, "goals_fire_label"):
+            self.goals_fire_label.configure(text="", image=fire_icon)
+
+        return summary
+
     def set_budget_limit(self):
         try:
             value_str = self.limit_entry.get().strip()
@@ -96,7 +140,7 @@ class BudgetMixin(AppMixin):
 
         percent_remaining = (remaining / limit) * 100
 
-        if 0 < percent_remaining <= 15:
+        if 0 < percent_remaining <= 10:
             self._show_budget_warning_popup(spent, limit, remaining, percent_remaining, btype)
 
     def _show_budget_warning_popup(self, spent, limit, remaining, percent_remaining, btype):
@@ -227,11 +271,10 @@ class BudgetMixin(AppMixin):
 
         self.goals_fire_label = ctk.CTkLabel(
             title_row,
-            text="  🔥",
-            font=("Segoe UI", 26),
-            text_color="#6B7280"   # grey until streak active
+            text="",
+            image=self.get_flame_icon(False, 28)
         )
-        self.goals_fire_label.pack(side="left")
+        self.goals_fire_label.pack(side="left", padx=(8, 0))
 
         # ── Streak header ─────────────────────────────────────────
         streak_title_row = ctk.CTkFrame(page, fg_color="transparent")
@@ -401,19 +444,7 @@ class BudgetMixin(AppMixin):
         if not hasattr(self, "streak_history_box") or not self.current_user:
             return
 
-        summary = self.db.sync_streak_summary_for_user(self.current_user.get_user_id())
-
-        if hasattr(self, "streak_display"):
-            self.streak_display.configure(
-                text=f"Current streak: {summary['current']} | Best: {summary['best']}"
-            )
-
-        # Update fire icon color based on streak
-        if hasattr(self, "goals_fire_label"):
-            if summary["current"] > 0:
-                self.goals_fire_label.configure(text_color="#F97316")
-            else:
-                self.goals_fire_label.configure(text_color="#6B7280")
+        summary = self.refresh_streak_state()
 
         # Clear and repopulate the modern card table
         for w in self.streak_history_box.winfo_children():
@@ -458,11 +489,19 @@ class BudgetMixin(AppMixin):
                 font=("Segoe UI", 12), text_color="#9CA3AF"
             ).grid(row=0, column=2, sticky="w", padx=10, pady=4)
 
+            streak_cell = ctk.CTkFrame(row, fg_color="transparent")
+            streak_cell.grid(row=0, column=3, sticky="w", padx=10, pady=4)
             ctk.CTkLabel(
-                row, text=f"🔥 {item['streak_after']}",
+                streak_cell,
+                text="",
+                image=self.get_flame_icon(item["streak_after"] > 0, 16),
+            ).pack(side="left", padx=(0, 5))
+            ctk.CTkLabel(
+                streak_cell,
+                text=str(item["streak_after"]),
                 font=("Segoe UI", 12, "bold"),
                 text_color="#F59E0B" if item["streak_after"] > 0 else "#6B7280"
-            ).grid(row=0, column=3, sticky="w", padx=10, pady=4)
+            ).pack(side="left")
 
     # =====================
     # GOAL DB HELPERS
@@ -814,4 +853,3 @@ class BudgetMixin(AppMixin):
             self.load_goals()
         except Exception as e:
             print("Create goal error:", e)
-

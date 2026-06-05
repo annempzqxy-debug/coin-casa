@@ -55,6 +55,9 @@ class User:
     def set_streak(self, streak):
         self.__streak_current = streak
 
+    def set_best_streak(self, streak):
+        self.__streak_best = streak
+
 class Transaction(ABC):
     def __init__(self, amount, category, description, date):
         self.amount = amount
