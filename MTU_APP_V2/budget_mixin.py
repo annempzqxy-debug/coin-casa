@@ -3,8 +3,8 @@ from datetime import date, timedelta
 import customtkinter as ctk
 from config import DB
 
-
 from mixin_base import AppMixin
+
 class BudgetMixin(AppMixin):
 
     def set_budget_limit(self):
@@ -20,16 +20,13 @@ class BudgetMixin(AppMixin):
             if hasattr(self, "settings_budget_type_var"):
                 selected_label = self.settings_budget_type_var.get()
             btype = {
-                "daily": "daily",
-                "weekly": "weekly",
-                "monthly": "monthly",
-                "yearly": "yearly",
+                "daily": "daily", "weekly": "weekly",
+                "monthly": "monthly", "yearly": "yearly",
             }.get(selected_label.lower(), self.current_budget_type or "weekly")
 
             self.confirm_budget_reset(amount, btype)
         except Exception as e:
             print("Budget limit error:", e)
-
 
     def confirm_budget_reset(self, amount, btype):
         warning = ctk.CTkToplevel(self)
@@ -63,7 +60,6 @@ class BudgetMixin(AppMixin):
             if not self.current_user or self.current_user.get_user_id() is None:
                 warning.destroy()
                 return
-
             self.db.update_user_budget(self.current_user.get_user_id(), btype, amount)
             self.total_limit = amount
             self.current_budget_limit = amount
@@ -71,25 +67,18 @@ class BudgetMixin(AppMixin):
             self.current_streak_current = 0
             self.current_streak_best = 0
             self.current_streak_last_success = None
-
             warning.destroy()
             self.update_budget_progress()
             self.refresh_everything()
 
         ctk.CTkButton(
-            actions,
-            text="Cancel",
-            width=140,
-            fg_color="#6B7280",
-            command=warning.destroy
+            actions, text="Cancel", width=140,
+            fg_color="#6B7280", command=warning.destroy
         ).pack(side="left", padx=8)
 
         ctk.CTkButton(
-            actions,
-            text="Reset Streak & Apply",
-            width=180,
-            fg_color="#EF4444",
-            hover_color="#DC2626",
+            actions, text="Reset Streak & Apply", width=180,
+            fg_color="#EF4444", hover_color="#DC2626",
             command=apply_change
         ).pack(side="left", padx=8)
 
@@ -161,7 +150,6 @@ class BudgetMixin(AppMixin):
             return selected, date(today.year, 1, 1), today
         return selected, today, today
 
-
     def _summary_category_totals(self, user_id):
         label, start, end = self._summary_filter_range()
         totals = {category: 0 for category in self.categories}
@@ -177,19 +165,12 @@ class BudgetMixin(AppMixin):
         return label, totals
 
     def rebuild_summary_page(self):
-        if not hasattr(self, "pages"):
+        if not hasattr(self, "pages") or not self.current_user:
             return
-
-        if not self.current_user:
-            return
-
         user_id = self.current_user.get_user_id()
-
         if "Summary" in self.pages:
             self.pages["Summary"].destroy()
-
         self.categories = self.db.get_categories_for_user(user_id)
-
         self.pages["Summary"] = self.create_summary_page()
         self.pages["Summary"].grid_forget()
 
@@ -206,7 +187,8 @@ class BudgetMixin(AppMixin):
         if hasattr(self, "budget_status_label"):
             if limit > 0 and spent > limit:
                 self.budget_status_label.configure(
-                    text=f"Current {btype} budget is ₱{amount_over:,.2f} over. Showing {filter_label.lower()} category spending.",
+                    text=f"Current {btype} budget is ₱{amount_over:,.2f} over. "
+                         f"Showing {filter_label.lower()} category spending.",
                     text_color="#F97316"
                 )
             else:
@@ -225,105 +207,140 @@ class BudgetMixin(AppMixin):
             spent_cat = filtered_totals.get(category, 0)
             progress = min(spent_cat / limit, 1.0)
             bar.set(progress)
-            label.configure(
-                text=f"₱{spent_cat:,.0f} / ₱{limit:,.0f}"
-            )
+            label.configure(text=f"₱{spent_cat:,.0f} / ₱{limit:,.0f}")
 
     # =====================
-    # GOALS & STREAKS PAGE (LAYOUT CLEANUP ONLY)
+    # GOALS & STREAKS PAGE
     # =====================
-
 
     def create_goals_page(self):
         page = ctk.CTkScrollableFrame(self.container)
 
+        # ── Page title with fire icon ─────────────────────────────
+        title_row = ctk.CTkFrame(page, fg_color="transparent")
+        title_row.pack(anchor="w", padx=20, pady=(20, 4))
+
         ctk.CTkLabel(
-            page,
+            title_row,
             text="Goals & Streaks",
             font=("Segoe UI", 30, "bold")
-        ).pack(anchor="w", padx=20, pady=(20, 15))
+        ).pack(side="left")
+
+        self.goals_fire_label = ctk.CTkLabel(
+            title_row,
+            text="  🔥",
+            font=("Segoe UI", 26),
+            text_color="#6B7280"   # grey until streak active
+        )
+        self.goals_fire_label.pack(side="left")
+
+        # ── Streak header ─────────────────────────────────────────
+        streak_title_row = ctk.CTkFrame(page, fg_color="transparent")
+        streak_title_row.pack(anchor="w", padx=20, pady=(4, 6))
 
         self.streak_display = ctk.CTkLabel(
-            page,
+            streak_title_row,
             text="Current streak: 0 | Best: 0",
             font=("Segoe UI", 20, "bold"),
             text_color="#F59E0B"
         )
-        self.streak_display.pack(anchor="w", padx=20, pady=(0, 10))
+        self.streak_display.pack(side="left")
 
-        self.streak_history_box = ctk.CTkTextbox(
-            page,
-            height=170,
-            font=("Consolas", 14),
-            state="disabled"
-        )
-        self.streak_history_box.pack(
-            fill="x",
-            padx=20,
-            pady=(0, 20)
-        )
+        # ── Modern streak history card ────────────────────────────
+        streak_card = ctk.CTkFrame(page, corner_radius=16)
+        streak_card.pack(fill="x", padx=20, pady=(0, 18))
 
-        # ── Create Goal form ──────────────────────────────────────
+        # Header row of table
+        streak_header = ctk.CTkFrame(streak_card, fg_color="transparent")
+        streak_header.pack(fill="x", padx=16, pady=(12, 4))
+
+        ctk.CTkLabel(
+            streak_header,
+            text="📅  Streak History",
+            font=("Segoe UI", 15, "bold")
+        ).pack(side="left")
+
+        # Column headers
+        col_frame = ctk.CTkFrame(streak_card, corner_radius=8, fg_color=("gray85", "#2d2d2d"))
+        col_frame.pack(fill="x", padx=16, pady=(0, 2))
+        col_frame.grid_columnconfigure(0, weight=2)
+        col_frame.grid_columnconfigure(1, weight=1)
+        col_frame.grid_columnconfigure(2, weight=2)
+        col_frame.grid_columnconfigure(3, weight=1)
+
+        for col_i, col_text in enumerate(["Period", "Status", "Spent / Limit", "Streak"]):
+            ctk.CTkLabel(
+                col_frame,
+                text=col_text,
+                font=("Segoe UI", 12, "bold"),
+                text_color="#9CA3AF"
+            ).grid(row=0, column=col_i, sticky="w", padx=10, pady=6)
+
+        # Scrollable rows container
+        self.streak_history_box = ctk.CTkScrollableFrame(
+            streak_card,
+            height=130,
+            corner_radius=8,
+            fg_color="transparent"
+        )
+        self.streak_history_box.pack(fill="x", padx=16, pady=(0, 14))
+
+        # Store summary labels for refresh
+        self._streak_summary_label = None
+
+        # ── Savings Goals header ──────────────────────────────────
         ctk.CTkLabel(
             page,
             text="Savings Goals",
             font=("Segoe UI", 22, "bold")
         ).pack(anchor="w", padx=20, pady=(0, 8))
 
+        # ── New Goal form — compact, side-by-side inputs ──────────
         new_goal_frame = ctk.CTkFrame(page, corner_radius=16)
         new_goal_frame.pack(fill="x", padx=20, pady=(0, 10))
 
         ctk.CTkLabel(
             new_goal_frame,
             text="New Goal",
-            font=("Segoe UI", 16, "bold")
-        ).pack(anchor="w", padx=16, pady=(12, 4))
+            font=("Segoe UI", 15, "bold")
+        ).pack(anchor="w", padx=16, pady=(10, 4))
+
+        inputs_row = ctk.CTkFrame(new_goal_frame, fg_color="transparent")
+        inputs_row.pack(fill="x", padx=16, pady=(0, 6))
+        inputs_row.grid_columnconfigure(0, weight=1)
+        inputs_row.grid_columnconfigure(1, weight=1)
 
         self.goal_name = ctk.CTkEntry(
-            new_goal_frame,
-            placeholder_text="Goal Name",
-            height=40
+            inputs_row, placeholder_text="Goal Name", height=38
         )
-        self.goal_name.pack(fill="x", padx=16, pady=4)
+        self.goal_name.grid(row=0, column=0, sticky="ew", padx=(0, 6))
 
         self.goal_amount = ctk.CTkEntry(
-            new_goal_frame,
-            placeholder_text="Target Amount",
-            height=40
+            inputs_row, placeholder_text="Target Amount", height=38
         )
-        self.goal_amount.pack(fill="x", padx=16, pady=4)
+        self.goal_amount.grid(row=0, column=1, sticky="ew", padx=(6, 0))
+
+        # Shorter create button — centered, not full width
+        btn_row = ctk.CTkFrame(new_goal_frame, fg_color="transparent")
+        btn_row.pack(pady=(0, 12))
 
         ctk.CTkButton(
-            new_goal_frame,
+            btn_row,
             text="＋ Create Goal",
-            height=40,
+            width=200,
+            height=38,
             command=self.create_goal
-        ).pack(fill="x", padx=16, pady=(4, 14))
+        ).pack()
 
         # ── Goal cards container ──────────────────────────────────
         self.goal_cards_frame = ctk.CTkScrollableFrame(
-            page,
-            height=420,
-            corner_radius=16,
-            label_text=""
+            page, height=400, corner_radius=16, label_text=""
         )
-        self.goal_cards_frame.pack(
-            fill="both",
-            expand=True,
-            padx=20,
-            pady=(0, 20)
-        )
+        self.goal_cards_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
-        self.calendar_frame = ctk.CTkFrame(
-            page,
-            corner_radius=24
-        )
-        self.calendar_frame.pack(
-            fill="both",
-            expand=True,
-            padx=20,
-            pady=(0, 20)
-        )
+        # ── Calendar ──────────────────────────────────────────────
+        self.calendar_frame = ctk.CTkFrame(page, corner_radius=24)
+        self.calendar_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
         ctk.CTkLabel(
             self.calendar_frame,
@@ -338,41 +355,30 @@ class BudgetMixin(AppMixin):
         calendar_nav.pack(fill="x", padx=20, pady=(0, 10))
 
         ctk.CTkButton(
-            calendar_nav,
-            text="Previous",
-            width=120,
+            calendar_nav, text="Previous", width=120,
             command=lambda: self.change_calendar_month(-1)
         ).pack(side="left")
 
         self.calendar_month = ctk.CTkLabel(
-            calendar_nav,
-            text="",
-            font=("Segoe UI", 18, "bold")
+            calendar_nav, text="", font=("Segoe UI", 18, "bold")
         )
         self.calendar_month.pack(side="left", expand=True)
 
         ctk.CTkButton(
-            calendar_nav,
-            text="Next",
-            width=120,
+            calendar_nav, text="Next", width=120,
             command=lambda: self.change_calendar_month(1)
         ).pack(side="right")
 
         self.calendar_grid = ctk.CTkFrame(
-            self.calendar_frame,
-            fg_color="transparent"
+            self.calendar_frame, fg_color="transparent"
         )
-        self.calendar_grid.pack(
-            padx=20,
-            pady=(0, 20)
-        )
+        self.calendar_grid.pack(padx=20, pady=(0, 20))
 
         return page
 
     # =====================
-    # REPORTS PAGE
+    # CALENDAR HELPERS
     # =====================
-
 
     def change_calendar_month(self, step):
         year = getattr(self, "calendar_visible_year", date.today().year)
@@ -392,51 +398,85 @@ class BudgetMixin(AppMixin):
         self.calendar_visible_month = month
         self.update_streak_calendar()
 
-
     def load_streak_history(self):
         if not hasattr(self, "streak_history_box") or not self.current_user:
             return
 
         summary = self.db.sync_streak_summary_for_user(self.current_user.get_user_id())
 
-        # Keep streak_display label in sync
         if hasattr(self, "streak_display"):
             self.streak_display.configure(
                 text=f"Current streak: {summary['current']} | Best: {summary['best']}"
             )
 
-        self.streak_history_box.configure(state="normal")
-        self.streak_history_box.delete("1.0", "end")
-        self.streak_history_box.insert(
-            "end",
-            f"Current streak: {summary['current']} {summary['budget_type'] or ''} period(s)\n"
-            f"Best streak: {summary['best']} {summary['budget_type'] or ''} period(s)\n\n"
-        )
+        # Update fire icon color based on streak
+        if hasattr(self, "goals_fire_label"):
+            if summary["current"] > 0:
+                self.goals_fire_label.configure(text_color="#F97316")
+            else:
+                self.goals_fire_label.configure(text_color="#6B7280")
+
+        # Clear and repopulate the modern card table
+        for w in self.streak_history_box.winfo_children():
+            w.destroy()
 
         history = summary["history"]
         if not history:
-            self.streak_history_box.insert("end", "No streak history yet. Add expenses to start tracking.\n")
-        else:
-            for item in history[-12:]:
-                status = "OK" if item["status"] == "success" else "ENDED"
-                self.streak_history_box.insert(
-                    "end",
-                    f"{item['period']} | {status} | ₱{item['total']:,.2f} / ₱{item['limit']:,.2f} | streak {item['streak_after']}\n"
-                )
+            ctk.CTkLabel(
+                self.streak_history_box,
+                text="No streak history yet. Add expenses to start tracking.",
+                font=("Segoe UI", 13),
+                text_color="#9CA3AF"
+            ).pack(anchor="w", padx=8, pady=14)
+            return
 
-        self.streak_history_box.configure(state="disabled")
+        for item in reversed(history[-12:]):
+            is_success = item["status"] == "success"
+            status_text = "✓  OK" if is_success else "✗  ENDED"
+            status_color = "#22C55E" if is_success else "#EF4444"
 
+            row = ctk.CTkFrame(self.streak_history_box, corner_radius=8, height=36)
+            row.pack(fill="x", padx=0, pady=2)
+            row.grid_columnconfigure(0, weight=2)
+            row.grid_columnconfigure(1, weight=1)
+            row.grid_columnconfigure(2, weight=2)
+            row.grid_columnconfigure(3, weight=1)
+            row.grid_propagate(False)
+
+            ctk.CTkLabel(
+                row, text=item["period"],
+                font=("Segoe UI", 12), text_color="#D1D5DB"
+            ).grid(row=0, column=0, sticky="w", padx=10, pady=4)
+
+            ctk.CTkLabel(
+                row, text=status_text,
+                font=("Segoe UI", 12, "bold"), text_color=status_color
+            ).grid(row=0, column=1, sticky="w", padx=10, pady=4)
+
+            ctk.CTkLabel(
+                row,
+                text=f"₱{item['total']:,.2f} / ₱{item['limit']:,.2f}",
+                font=("Segoe UI", 12), text_color="#9CA3AF"
+            ).grid(row=0, column=2, sticky="w", padx=10, pady=4)
+
+            ctk.CTkLabel(
+                row, text=f"🔥 {item['streak_after']}",
+                font=("Segoe UI", 12, "bold"),
+                text_color="#F59E0B" if item["streak_after"] > 0 else "#6B7280"
+            ).grid(row=0, column=3, sticky="w", padx=10, pady=4)
+
+    # =====================
+    # GOAL DB HELPERS
+    # =====================
 
     def _ensure_goal_tables(self, cur):
-        """Create goals and goal_history tables if they don't exist."""
         cur.execute("""
         CREATE TABLE IF NOT EXISTS goals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             target REAL NOT NULL,
             saved REAL NOT NULL DEFAULT 0
-        )
-        """)
+        )""")
         cur.execute("""
         CREATE TABLE IF NOT EXISTS goal_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -445,8 +485,7 @@ class BudgetMixin(AppMixin):
             amount REAL NOT NULL,
             note TEXT,
             date TEXT NOT NULL
-        )
-        """)
+        )""")
 
     def load_goals(self):
         if not hasattr(self, "goal_cards_frame"):
@@ -459,7 +498,6 @@ class BudgetMixin(AppMixin):
         cur = conn.cursor()
         self._ensure_goal_tables(cur)
         conn.commit()
-
         cur.execute("SELECT id, name, target, saved FROM goals ORDER BY id")
         rows = cur.fetchall()
         conn.close()
@@ -481,119 +519,112 @@ class BudgetMixin(AppMixin):
         card = ctk.CTkFrame(parent, corner_radius=14)
         card.pack(fill="x", padx=8, pady=6)
 
-        # ── Header row ─────────────────────────────────────────────
         header = ctk.CTkFrame(card, fg_color="transparent")
         header.pack(fill="x", padx=14, pady=(12, 4))
 
-        ctk.CTkLabel(
-            header,
-            text=name,
-            font=("Segoe UI", 15, "bold")
-        ).pack(side="left")
+        ctk.CTkLabel(header, text=name, font=("Segoe UI", 15, "bold")).pack(side="left")
 
         pct_color = "#22C55E" if percent >= 100 else "#3B82F6"
         ctk.CTkLabel(
-            header,
-            text=f"{percent:.1f}%",
-            font=("Segoe UI", 13, "bold"),
-            text_color=pct_color
+            header, text=f"{percent:.1f}%",
+            font=("Segoe UI", 13, "bold"), text_color=pct_color
         ).pack(side="right")
 
-        # ── Progress bar ───────────────────────────────────────────
         bar = ctk.CTkProgressBar(card, height=10, corner_radius=5)
         bar.set(min(percent / 100, 1.0))
         bar.pack(fill="x", padx=14, pady=(0, 4))
 
-        # ── Amounts ────────────────────────────────────────────────
         amounts = ctk.CTkFrame(card, fg_color="transparent")
         amounts.pack(fill="x", padx=14, pady=(0, 8))
 
         ctk.CTkLabel(
-            amounts,
-            text=f"Saved: ₱{saved:,.2f}",
-            font=("Segoe UI", 13),
-            text_color="#22C55E"
+            amounts, text=f"Saved: ₱{saved:,.2f}",
+            font=("Segoe UI", 13), text_color="#22C55E"
         ).pack(side="left")
 
         ctk.CTkLabel(
-            amounts,
-            text=f"Target: ₱{target:,.2f}",
-            font=("Segoe UI", 13),
-            text_color="#9CA3AF"
+            amounts, text=f"Target: ₱{target:,.2f}",
+            font=("Segoe UI", 13), text_color="#9CA3AF"
         ).pack(side="right")
 
-        # ── Action buttons ─────────────────────────────────────────
         btn_row = ctk.CTkFrame(card, fg_color="transparent")
         btn_row.pack(fill="x", padx=14, pady=(0, 6))
 
         ctk.CTkButton(
-            btn_row,
-            text="＋ Add Savings",
-            width=130,
-            height=34,
-            fg_color="#22C55E",
-            hover_color="#16A34A",
+            btn_row, text="＋ Add Savings", width=130, height=34,
+            fg_color="#22C55E", hover_color="#16A34A",
             command=lambda gid=goal_id, gname=name: self._goal_amount_popup(gid, gname, "deposit")
         ).pack(side="left", padx=(0, 6))
 
         ctk.CTkButton(
-            btn_row,
-            text="－ Withdraw",
-            width=110,
-            height=34,
-            fg_color="#F97316",
-            hover_color="#EA580C",
+            btn_row, text="－ Withdraw", width=110, height=34,
+            fg_color="#F97316", hover_color="#EA580C",
             command=lambda gid=goal_id, gname=name: self._goal_amount_popup(gid, gname, "withdraw")
         ).pack(side="left", padx=(0, 6))
 
         ctk.CTkButton(
-            btn_row,
-            text="History",
-            width=90,
-            height=34,
-            fg_color="#6B7280",
-            hover_color="#4B5563",
+            btn_row, text="History", width=90, height=34,
+            fg_color="#6B7280", hover_color="#4B5563",
             command=lambda gid=goal_id, gname=name: self._show_goal_history(gid, gname)
         ).pack(side="left", padx=(0, 6))
 
         ctk.CTkButton(
-            btn_row,
-            text="Delete",
-            width=80,
-            height=34,
-            fg_color="#EF4444",
-            hover_color="#DC2626",
+            btn_row, text="Delete", width=80, height=34,
+            fg_color="#EF4444", hover_color="#DC2626",
             command=lambda gid=goal_id, gname=name: self._confirm_delete_goal(gid, gname)
         ).pack(side="right")
+
+    # =====================
+    # ADD/WITHDRAW POPUP — centered layout
+    # =====================
 
     def _goal_amount_popup(self, goal_id, goal_name, action):
         win = ctk.CTkToplevel(self)
         win.title("Add Savings" if action == "deposit" else "Withdraw Savings")
-        win.geometry("380x280")
+        win.geometry("360x300")
+        win.resizable(False, False)
         win.grab_set()
 
-        label = "Amount to Add" if action == "deposit" else "Amount to Withdraw"
-        color = "#22C55E" if action == "deposit" else "#F97316"
+        # Center on screen
+        win.update_idletasks()
+        w = win.winfo_width()
+        h = win.winfo_height()
+        x = (win.winfo_screenwidth() // 2) - (w // 2)
+        y = (win.winfo_screenheight() // 2) - (h // 2)
+        win.geometry(f"360x300+{x}+{y}")
 
+        color = "#22C55E" if action == "deposit" else "#F97316"
+        icon = "➕" if action == "deposit" else "➖"
+
+        # Title
         ctk.CTkLabel(
             win,
-            text=f"{'➕' if action == 'deposit' else '➖'} {goal_name}",
+            text=f"{icon}  {goal_name}",
             font=("Segoe UI", 18, "bold"),
             text_color=color
-        ).pack(pady=(20, 8))
+        ).pack(pady=(22, 4))
 
-        ctk.CTkLabel(win, text=label, font=("Segoe UI", 14)).pack(pady=(0, 4))
+        # Amount
+        ctk.CTkLabel(
+            win, text="Amount to Add" if action == "deposit" else "Amount to Withdraw",
+            font=("Segoe UI", 13)
+        ).pack(pady=(0, 2))
 
-        amount_entry = ctk.CTkEntry(win, placeholder_text="e.g. 500", width=260, height=40)
-        amount_entry.pack(pady=4)
+        amount_entry = ctk.CTkEntry(
+            win, placeholder_text="e.g. 500", width=260, height=38
+        )
+        amount_entry.pack(pady=(0, 8))
 
-        ctk.CTkLabel(win, text="Note (optional)", font=("Segoe UI", 14)).pack(pady=(8, 4))
+        # Note
+        ctk.CTkLabel(win, text="Note (optional)", font=("Segoe UI", 13)).pack(pady=(0, 2))
 
-        note_entry = ctk.CTkEntry(win, placeholder_text="e.g. Birthday money", width=260, height=40)
-        note_entry.pack(pady=4)
+        note_entry = ctk.CTkEntry(
+            win, placeholder_text="e.g. Birthday money", width=260, height=38
+        )
+        note_entry.pack(pady=(0, 8))
 
         status = ctk.CTkLabel(win, text="", text_color="#EF4444", font=("Segoe UI", 12))
-        status.pack(pady=4)
+        status.pack(pady=(0, 4))
 
         def save():
             try:
@@ -611,7 +642,6 @@ class BudgetMixin(AppMixin):
                 conn = sqlite3.connect(DB)
                 cur = conn.cursor()
                 self._ensure_goal_tables(cur)
-
                 cur.execute("SELECT saved FROM goals WHERE id=?", (goal_id,))
                 row = cur.fetchone()
                 if not row:
@@ -623,7 +653,9 @@ class BudgetMixin(AppMixin):
                 if action == "withdraw":
                     if amt > current_saved:
                         conn.close()
-                        status.configure(text=f"Cannot withdraw more than ₱{current_saved:,.2f} saved.")
+                        status.configure(
+                            text=f"Cannot withdraw more than ₱{current_saved:,.2f} saved."
+                        )
                         return
                     new_saved = current_saved - amt
                 else:
@@ -631,25 +663,21 @@ class BudgetMixin(AppMixin):
 
                 cur.execute("UPDATE goals SET saved=? WHERE id=?", (new_saved, goal_id))
                 cur.execute(
-                    "INSERT INTO goal_history (goal_id, action, amount, note, date) VALUES (?,?,?,?,?)",
+                    "INSERT INTO goal_history (goal_id, action, amount, note, date) "
+                    "VALUES (?,?,?,?,?)",
                     (goal_id, action, amt, note, today)
                 )
                 conn.commit()
                 conn.close()
-
                 win.destroy()
                 self.load_goals()
             except Exception as e:
                 status.configure(text=f"Error: {e}")
 
         ctk.CTkButton(
-            win,
-            text="Save",
-            width=260,
-            height=40,
-            fg_color=color,
-            command=save
-        ).pack(pady=12)
+            win, text="Save", width=260, height=38,
+            fg_color=color, command=save
+        ).pack(pady=(0, 12))
 
     def _show_goal_history(self, goal_id, goal_name):
         win = ctk.CTkToplevel(self)
@@ -670,7 +698,8 @@ class BudgetMixin(AppMixin):
         cur = conn.cursor()
         self._ensure_goal_tables(cur)
         cur.execute(
-            "SELECT action, amount, note, date FROM goal_history WHERE goal_id=? ORDER BY id DESC",
+            "SELECT action, amount, note, date FROM goal_history "
+            "WHERE goal_id=? ORDER BY id DESC",
             (goal_id,)
         )
         rows = cur.fetchall()
@@ -678,10 +707,8 @@ class BudgetMixin(AppMixin):
 
         if not rows:
             ctk.CTkLabel(
-                box,
-                text="No history yet.",
-                font=("Segoe UI", 13),
-                text_color="#9CA3AF"
+                box, text="No history yet.",
+                font=("Segoe UI", 13), text_color="#9CA3AF"
             ).pack(pady=20)
             return
 
@@ -697,35 +724,27 @@ class BudgetMixin(AppMixin):
             left.pack(side="left", padx=12, pady=8)
 
             ctk.CTkLabel(
-                left,
-                text=f"{icon} {action_label}",
-                font=("Segoe UI", 13, "bold"),
-                text_color=color
+                left, text=f"{icon} {action_label}",
+                font=("Segoe UI", 13, "bold"), text_color=color
             ).pack(anchor="w")
 
             if note:
                 ctk.CTkLabel(
-                    left,
-                    text=note,
-                    font=("Segoe UI", 12),
-                    text_color="#9CA3AF"
+                    left, text=note,
+                    font=("Segoe UI", 12), text_color="#9CA3AF"
                 ).pack(anchor="w")
 
             right = ctk.CTkFrame(row_frame, fg_color="transparent")
             right.pack(side="right", padx=12, pady=8)
 
             ctk.CTkLabel(
-                right,
-                text=f"₱{amount:,.2f}",
-                font=("Segoe UI", 14, "bold"),
-                text_color=color
+                right, text=f"₱{amount:,.2f}",
+                font=("Segoe UI", 14, "bold"), text_color=color
             ).pack(anchor="e")
 
             ctk.CTkLabel(
-                right,
-                text=entry_date,
-                font=("Segoe UI", 11),
-                text_color="#6B7280"
+                right, text=entry_date,
+                font=("Segoe UI", 11), text_color="#6B7280"
             ).pack(anchor="e")
 
     def _confirm_delete_goal(self, goal_id, goal_name):
@@ -735,18 +754,15 @@ class BudgetMixin(AppMixin):
         win.grab_set()
 
         ctk.CTkLabel(
-            win,
-            text=f'Delete "{goal_name}"?',
+            win, text=f'Delete "{goal_name}"?',
             font=("Segoe UI", 17, "bold")
         ).pack(pady=(24, 8), padx=20)
 
         ctk.CTkLabel(
             win,
             text="This will permanently delete the goal and all its history.",
-            font=("Segoe UI", 13),
-            text_color="#9CA3AF",
-            wraplength=340,
-            justify="center"
+            font=("Segoe UI", 13), text_color="#9CA3AF",
+            wraplength=340, justify="center"
         ).pack(padx=20)
 
         btns = ctk.CTkFrame(win, fg_color="transparent")
@@ -764,24 +780,21 @@ class BudgetMixin(AppMixin):
             self.load_goals()
 
         ctk.CTkButton(
-            btns, text="Cancel", width=130, fg_color="#6B7280",
-            command=win.destroy
+            btns, text="Cancel", width=130,
+            fg_color="#6B7280", command=win.destroy
         ).pack(side="left", padx=8)
 
         ctk.CTkButton(
-            btns, text="Delete", width=130, fg_color="#EF4444",
-            hover_color="#DC2626", command=do_delete
+            btns, text="Delete", width=130,
+            fg_color="#EF4444", hover_color="#DC2626",
+            command=do_delete
         ).pack(side="left", padx=8)
-
 
     def create_goal(self):
         try:
             name = self.goal_name.get().strip()
             target_str = self.goal_amount.get().strip()
-
-            if not name:
-                return
-            if not target_str:
+            if not name or not target_str:
                 return
             target = float(target_str)
             if target <= 0:
@@ -790,19 +803,15 @@ class BudgetMixin(AppMixin):
             conn = sqlite3.connect(DB)
             cur = conn.cursor()
             self._ensure_goal_tables(cur)
-
             cur.execute(
                 "INSERT INTO goals (name, target, saved) VALUES (?, ?, 0)",
                 (name, target)
             )
-
             conn.commit()
             conn.close()
 
             self.goal_name.delete(0, "end")
             self.goal_amount.delete(0, "end")
-
             self.load_goals()
-
         except Exception as e:
             print("Create goal error:", e)

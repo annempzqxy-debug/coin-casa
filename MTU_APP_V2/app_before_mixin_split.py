@@ -16,13 +16,13 @@ from date_utils import today_str
 from money_tracker_split.models import Expense, User
 
 
-class MoneyTrackerUltimate(ctk.CTk):
+class CoinsCasa(ctk.CTk):
     def __init__(self):
         super().__init__()
 
         self.db = DatabaseManager()
 
-        self.title("MoneyTracker Ultimate")
+        self.title("CoinsCasa")
         self.geometry("1500x900")
         self.minsize(1100, 700)
 
@@ -87,7 +87,7 @@ class MoneyTrackerUltimate(ctk.CTk):
 
         ctk.CTkLabel(
             center,
-            text="MoneyTracker Ultimate",
+            text="CoinsCasa",
             font=("Segoe UI", 32, "bold")
         ).pack(pady=(40, 10))
 
