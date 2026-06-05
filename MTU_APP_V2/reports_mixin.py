@@ -7,8 +7,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from config import DB
 
-
 from mixin_base import AppMixin
+
 class ReportsMixin(AppMixin):
 
     # =====================
@@ -16,27 +16,25 @@ class ReportsMixin(AppMixin):
     # =====================
 
     def _graph_colors(self):
-        """Return (bg, axes_bg, text, grid, bar) colours based on current CTk mode."""
-        mode = ctk.get_appearance_mode()  # "Dark" or "Light"
+        mode = ctk.get_appearance_mode()
         if mode == "Dark":
             return {
-                "fig_bg":   "#1a1a2e",   # very dark navy — deeper than the app bg
-                "axes_bg":  "#16213e",   # slightly lighter dark box for the plot area
-                "text":     "#e2e8f0",   # light grey text / ticks
-                "grid":     "#2d3748",   # subtle dark gridlines
-                "bar":      "#3B82F6",   # blue bars (unchanged)
+                "fig_bg":   "#1a1a2e",
+                "axes_bg":  "#16213e",
+                "text":     "#e2e8f0",
+                "grid":     "#2d3748",
+                "bar":      "#3B82F6",
             }
         else:
             return {
-                "fig_bg":   "#dde3ec",   # slightly off-white frame around the chart
-                "axes_bg":  "#ffffff",   # crisp white plot area
-                "text":     "#1f2937",   # near-black text / ticks
-                "grid":     "#cbd5e1",   # soft light-grey gridlines
+                "fig_bg":   "#dde3ec",
+                "axes_bg":  "#ffffff",
+                "text":     "#1f2937",
+                "grid":     "#cbd5e1",
                 "bar":      "#3B82F6",
             }
 
     def _style_axes(self, ax, fig, colors):
-        """Apply background colours, spine colours and grid to an axes object."""
         fig.patch.set_facecolor(colors["fig_bg"])
         ax.set_facecolor(colors["axes_bg"])
         ax.tick_params(colors=colors["text"], labelcolor=colors["text"])
@@ -46,26 +44,59 @@ class ReportsMixin(AppMixin):
         ax.xaxis.label.set_color(colors["text"])
         ax.yaxis.label.set_color(colors["text"])
 
+    # =====================
+    # REPORTS PAGE
+    # =====================
+
     def create_reports_page(self):
         page = ctk.CTkScrollableFrame(self.container)
 
+        # ── Header row: period button LEFT, category filter RIGHT ──
         header = ctk.CTkFrame(page)
         header.pack(fill="x", pady=10)
 
+        # Left side — period toggle + total label
+        left_header = ctk.CTkFrame(header, fg_color="transparent")
+        left_header.pack(side="left", padx=10)
+
         self.period_button = ctk.CTkButton(
-            header,
+            left_header,
             text=self.period.title(),
+            width=110,
             command=self.change_period
         )
-        self.period_button.pack(side="left", padx=10)
+        self.period_button.pack(side="left", padx=(0, 10))
 
         self.report_total = ctk.CTkLabel(
-            header,
+            left_header,
             text="Total Spending: ₱0.00",
             font=("Segoe UI", 18, "bold")
         )
-        self.report_total.pack(side="left", padx=20)
+        self.report_total.pack(side="left")
 
+        # Right side — category filter
+        right_header = ctk.CTkFrame(header, fg_color="transparent")
+        right_header.pack(side="right", padx=10)
+
+        ctk.CTkLabel(
+            right_header,
+            text="Category:",
+            font=("Segoe UI", 13, "bold")
+        ).pack(side="left", padx=(0, 6))
+
+        # Build category list: "All" + user categories
+        cat_options = ["All"] + (self.categories if hasattr(self, "categories") and self.categories else [])
+        self.report_category_var = ctk.StringVar(value="All")
+        self.report_category_menu = ctk.CTkOptionMenu(
+            right_header,
+            values=cat_options,
+            variable=self.report_category_var,
+            width=150,
+            command=lambda _: self.refresh_reports()
+        )
+        self.report_category_menu.pack(side="left")
+
+        # ── Charts ────────────────────────────────────────────────
         self.analytics_label = ctk.CTkLabel(
             page,
             text="Summary Analytics",
@@ -98,7 +129,6 @@ class ReportsMixin(AppMixin):
 
         return page
 
-
     def change_period(self):
         periods = ["today", "daily", "weekly", "monthly", "yearly"]
         if self.period not in periods:
@@ -110,14 +140,19 @@ class ReportsMixin(AppMixin):
         self.update_report_graph()
         self.update_pie_chart()
 
-
     def _expense_rows_for_report(self):
         if not self.current_user or self.current_user.get_user_id() is None:
             return []
 
+        selected_cat = getattr(self, "report_category_var", None)
+        selected_cat = selected_cat.get() if selected_cat else "All"
+
         rows = []
         for row in self.db.get_transactions(self.current_user.get_user_id()):
             if row[2] != "Expense":
+                continue
+            # Apply category filter
+            if selected_cat != "All" and row[4] != selected_cat:
                 continue
             try:
                 d = date.fromisoformat(row[6])
@@ -125,7 +160,6 @@ class ReportsMixin(AppMixin):
                 continue
             rows.append((d, row))
         return sorted(rows, key=lambda item: item[0])
-
 
     def _filtered_report_rows(self):
         today = date.today()
@@ -145,7 +179,6 @@ class ReportsMixin(AppMixin):
         if self.period == "yearly":
             return rows
         return rows
-
 
     def _report_series(self):
         rows = self._filtered_report_rows()
@@ -168,7 +201,6 @@ class ReportsMixin(AppMixin):
             totals[key] = totals.get(key, 0.0) + amount
 
         return list(totals.keys()), list(totals.values()), rows
-
 
     def update_report_graph(self):
         if not self.current_user or self.current_user.get_user_id() is None:
@@ -194,10 +226,9 @@ class ReportsMixin(AppMixin):
                 "monthly": "Months in the current year",
                 "yearly": "Years",
             }.get(self.period, "Period"))
-            # horizontal gridlines behind the bars
-            self.ax.yaxis.grid(True, color=colors["grid"], linestyle="--", linewidth=0.8, alpha=0.8)
+            self.ax.yaxis.grid(True, color=colors["grid"], linestyle="--",
+                               linewidth=0.8, alpha=0.8)
             self.ax.set_axisbelow(True)
-            # ₱ amount label on top of every bar
             for bar, val in zip(bars, values):
                 self.ax.text(
                     bar.get_x() + bar.get_width() / 2,
@@ -218,22 +249,16 @@ class ReportsMixin(AppMixin):
 
         self.ax.set_title(f"{self.period.title()} Spending", color=colors["text"])
 
-        # Total amount banner above the chart
         self.figure.suptitle(
             f"Total:  ₱{total:,.2f}",
-            fontsize=14,
-            fontweight="bold",
-            color=colors["text"],
-            y=0.98
+            fontsize=14, fontweight="bold",
+            color=colors["text"], y=0.98
         )
 
         self.figure.tight_layout(rect=(0, 0, 1, 0.94))
         self.canvas.draw()
 
-        self.report_total.configure(
-            text=f"Total Spending: ₱{total:,.2f}"
-        )
-
+        self.report_total.configure(text=f"Total Spending: ₱{total:,.2f}")
 
     def update_pie_chart(self):
         if not hasattr(self, "pie_ax"):
@@ -243,7 +268,6 @@ class ReportsMixin(AppMixin):
         self.pie_ax.clear()
         self._style_axes(self.pie_ax, self.pie_figure, colors)
 
-        # Use the same filtered rows as the bar chart — already respects self.period
         filtered_rows = self._filtered_report_rows()
         category_totals = {}
         for _, row in filtered_rows:
@@ -272,28 +296,22 @@ class ReportsMixin(AppMixin):
             wedges = pie_result[0]
             autotexts = pie_result[2] if len(pie_result) > 2 else []
 
-            # Style the percentage labels inside slices
             for at in autotexts:
                 at.set_fontsize(10)
                 at.set_color(colors["text"])
 
-            # Put category names in a legend to avoid any overlap
             self.pie_ax.legend(
-                wedges,
-                labels,
+                wedges, labels,
                 loc="lower center",
                 bbox_to_anchor=(0.5, -0.12),
                 ncol=min(len(labels), 4),
-                fontsize=11,
-                framealpha=0,
+                fontsize=11, framealpha=0,
                 labelcolor=colors["text"]
             )
 
             self.pie_ax.set_title(
                 f"{self.period.title()} Expenses by Category",
-                fontsize=14,
-                pad=18,
-                color=colors["text"]
+                fontsize=14, pad=18, color=colors["text"]
             )
         else:
             self.pie_ax.text(
@@ -303,13 +321,10 @@ class ReportsMixin(AppMixin):
                 color=colors["text"]
             )
 
-        # Total amount banner above the pie chart
         self.pie_figure.suptitle(
             f"Total:  ₱{total:,.2f}",
-            fontsize=14,
-            fontweight="bold",
-            color=colors["text"],
-            y=0.98
+            fontsize=14, fontweight="bold",
+            color=colors["text"], y=0.98
         )
 
         self.pie_figure.tight_layout(rect=(0, 0.08, 1, 0.94))
@@ -319,11 +334,9 @@ class ReportsMixin(AppMixin):
     # DELETE TRANSACTIONS
     # =====================
 
-
     def _first_over_budget_date(self, user_id, budget_type, period_key, limit):
         rows = sorted(
-            self.db.get_transactions(user_id),
-            key=lambda row: row[6] or ""
+            self.db.get_transactions(user_id), key=lambda row: row[6] or ""
         )
         total = 0.0
         for row in rows:
@@ -344,7 +357,6 @@ class ReportsMixin(AppMixin):
                     return None
         return None
 
-
     def _streak_day_status(self, d, user_id, budget_type, limit):
         if not budget_type or limit <= 0:
             return "neutral", "No budget set"
@@ -364,7 +376,9 @@ class ReportsMixin(AppMixin):
             return "neutral", "No spending recorded"
 
         if item["status"] == "failed":
-            over_date = self._first_over_budget_date(user_id, budget_type, period_key, limit)
+            over_date = self._first_over_budget_date(
+                user_id, budget_type, period_key, limit
+            )
             if budget_type == "daily" or d == over_date:
                 return "failed_start", f"Streak ended: ₱{item['total']:,.2f} / ₱{limit:,.2f}"
             return "neutral", f"Budget was still under limit before {over_date}"
@@ -375,9 +389,9 @@ class ReportsMixin(AppMixin):
 
         return "success", f"Successful {budget_type} period: ₱{item['total']:,.2f} / ₱{limit:,.2f}"
 
-
     def update_streak_calendar(self):
-        if not hasattr(self, "calendar_grid") or not self.current_user or self.current_user.get_user_id() is None:
+        if not hasattr(self, "calendar_grid") or not self.current_user \
+                or self.current_user.get_user_id() is None:
             return
 
         for widget in self.calendar_grid.winfo_children():
@@ -391,7 +405,6 @@ class ReportsMixin(AppMixin):
         visible_month = getattr(self, "calendar_visible_month", today.month)
         month_name = calendar.month_name[visible_month]
 
-        # Build daily expense totals for the visible month
         daily_totals = {}
         for row in self.db.get_transactions(user_id):
             if row[2] != "Expense":
@@ -403,7 +416,6 @@ class ReportsMixin(AppMixin):
             if d.year == visible_year and d.month == visible_month:
                 daily_totals[d.isoformat()] = daily_totals.get(d.isoformat(), 0.0) + row[3]
 
-        # Build a period_key → status map from streak history
         summary = self.db.get_streak_summary_for_user(user_id)
         period_status = {item["period"]: item["status"] for item in summary["history"]}
         current_period_key = self.db.get_period_key(budget_type, today.isoformat())
@@ -428,23 +440,20 @@ class ReportsMixin(AppMixin):
 
         days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
         for col, day in enumerate(days):
-            lbl = ctk.CTkLabel(
-                self.calendar_grid,
-                text=day,
+            ctk.CTkLabel(
+                self.calendar_grid, text=day,
                 font=("Segoe UI", 18, "bold")
-            )
-            lbl.grid(row=1, column=col, padx=6, pady=6, sticky="nsew")
+            ).grid(row=1, column=col, padx=6, pady=6, sticky="nsew")
 
         cal = calendar.monthcalendar(visible_year, visible_month)
 
-        # For monthly budget: compute whole-month status once
         month_color: str = "#374151"
         month_marker: str = ""
         if budget_type == "monthly":
             month_key_str = f"{visible_year}-{visible_month:02d}"
             month_status = period_status.get(month_key_str)
             if month_key_str == current_period_key:
-                month_color = "#374151"   # current in-progress
+                month_color = "#374151"
                 month_marker = ""
             elif month_status == "success":
                 month_color = "#F59E0B"
@@ -452,74 +461,55 @@ class ReportsMixin(AppMixin):
             elif month_status == "failed":
                 month_color = "#6B7280"
                 month_marker = "Ended"
-            else:
-                month_color = "#374151"
-                month_marker = ""
-        else:
-            month_color = "#374151"
-            month_marker = ""
 
         for row_i, week in enumerate(cal):
-            # Default week vars (only used when budget_type == "weekly")
             week_color: str = "#374151"
             week_marker: str = ""
 
-            # For weekly budget: compute this week's period status once per row
             if budget_type == "weekly":
-                # Find first real day in this week
                 first_day_num = next((d for d in week if d != 0), None)
                 if first_day_num is not None:
                     week_d = date(visible_year, visible_month, first_day_num)
                     week_period_key = self.db.get_period_key("weekly", week_d.isoformat())
                     week_status = period_status.get(week_period_key)
                     if week_period_key == current_period_key:
-                        week_color = "#374151"   # in-progress week
-                        week_marker = ""
-                    elif week_status == "success":
-                        week_color = "#F59E0B"   # whole week succeeded → amber
-                        week_marker = "OK"
-                    elif week_status == "failed":
-                        week_color = "#6B7280"   # whole week failed → gray
-                        week_marker = "Ended"
-                    else:
                         week_color = "#374151"
                         week_marker = ""
-                else:
-                    week_color = "#374151"
-                    week_marker = ""
+                    elif week_status == "success":
+                        week_color = "#F59E0B"
+                        week_marker = "OK"
+                    elif week_status == "failed":
+                        week_color = "#6B7280"
+                        week_marker = "Ended"
 
             for col_i, day_num in enumerate(week):
                 if day_num == 0:
-                    spacer = ctk.CTkFrame(self.calendar_grid, width=150, height=118, fg_color="transparent")
+                    spacer = ctk.CTkFrame(
+                        self.calendar_grid, width=150, height=118,
+                        fg_color="transparent"
+                    )
                     spacer.grid(row=row_i + 2, column=col_i, padx=8, pady=8, sticky="nsew")
                     continue
 
                 d = date(visible_year, visible_month, day_num)
                 daily_total = daily_totals.get(d.isoformat(), 0.0)
 
-                # Defaults — overwritten by the branch below
                 color: str = "#374151"
                 marker: str = ""
 
-                # Determine color and marker based on budget_type
                 if budget_type == "daily":
                     day_period_key = self.db.get_period_key("daily", d.isoformat())
                     day_status = period_status.get(day_period_key)
                     if d > today:
                         color = "#374151"
-                        marker = ""
                     elif day_period_key == current_period_key:
                         color = "#374151"
-                        marker = ""
                     elif day_status == "success":
                         color = "#F59E0B"
                         marker = "OK"
                     elif day_status == "failed":
                         color = "#6B7280"
                         marker = "Ended"
-                    else:
-                        color = "#374151"
-                        marker = ""
                 elif budget_type == "weekly":
                     color = week_color
                     marker = week_marker
@@ -527,55 +517,43 @@ class ReportsMixin(AppMixin):
                     color = month_color
                     marker = month_marker
                 else:
-                    # yearly: treat whole year as one period
                     year_key_str = str(visible_year)
                     year_status = period_status.get(year_key_str)
                     if year_key_str == current_period_key:
                         color = "#374151"
-                        marker = ""
                     elif year_status == "success":
                         color = "#F59E0B"
                         marker = "OK"
                     elif year_status == "failed":
                         color = "#6B7280"
                         marker = "Ended"
-                    else:
-                        color = "#374151"
-                        marker = ""
 
                 box = ctk.CTkFrame(
-                    self.calendar_grid,
-                    width=150,
-                    height=118,
-                    corner_radius=18,
-                    fg_color=color
+                    self.calendar_grid, width=150, height=118,
+                    corner_radius=18, fg_color=color
                 )
                 box.grid(row=row_i + 2, column=col_i, padx=8, pady=8, sticky="nsew")
                 box.grid_propagate(False)
 
                 ctk.CTkLabel(
-                    box,
-                    text=str(day_num),
-                    font=("Segoe UI", 22, "bold")
+                    box, text=str(day_num), font=("Segoe UI", 22, "bold")
                 ).pack(pady=(10, 0))
 
                 total_text = f"₱{daily_total:,.0f}" if daily_total > 0 else ""
                 ctk.CTkLabel(
-                    box,
-                    text=total_text,
-                    font=("Segoe UI", 13, "bold"),
-                    text_color="white"
+                    box, text=total_text,
+                    font=("Segoe UI", 13, "bold"), text_color="white"
                 ).pack(pady=(2, 0))
 
                 ctk.CTkLabel(
-                    box,
-                    text=marker,
-                    font=("Segoe UI", 11, "bold"),
-                    text_color="white"
+                    box, text=marker,
+                    font=("Segoe UI", 11, "bold"), text_color="white"
                 ).pack(pady=(2, 0))
 
         for col in range(7):
-            self.calendar_grid.grid_columnconfigure(col, weight=1, uniform="streak_calendar", minsize=155)
+            self.calendar_grid.grid_columnconfigure(
+                col, weight=1, uniform="streak_calendar", minsize=155
+            )
         for row in range(2, 8):
             self.calendar_grid.grid_rowconfigure(row, weight=1, minsize=122)
 
@@ -583,15 +561,13 @@ class ReportsMixin(AppMixin):
     # REPORT REFRESH
     # =====================
 
-
     def refresh_reports(self):
+        # Refresh category menu options when categories change
+        if hasattr(self, "report_category_menu") and hasattr(self, "categories"):
+            cat_options = ["All"] + (self.categories or [])
+            self.report_category_menu.configure(values=cat_options)
         self.update_report_graph()
         self.update_pie_chart()
-
-    # =====================
-    # GLOBAL REFRESH
-    # =====================
-
 
     def export_report(self):
         if not self.current_user or self.current_user.get_user_id() is None:
@@ -601,18 +577,15 @@ class ReportsMixin(AppMixin):
                 defaultextension=".txt",
                 filetypes=[("Text Files", "*.txt")]
             )
-
             if not file_path:
                 return
 
             rows = self.db.get_transactions(self.current_user.get_user_id())
-
             with open(file_path, "w", encoding="utf-8") as f:
-                f.write("MoneyTracker Report\n\n")
+                f.write("CoinsCasa Report\n\n")
                 for row in rows:
                     f.write(
                         f"{row[6]} | {row[2]} | {row[4]} | ₱{row[3]:,.2f} | {row[5]}\n"
                     )
-
         except Exception as e:
             print("Export Error:", e)

@@ -1,7 +1,7 @@
 import customtkinter as ctk
 
-
 from mixin_base import AppMixin
+
 class NavigationMixin(AppMixin):
 
     def initialize_main_app(self):
@@ -18,26 +18,41 @@ class NavigationMixin(AppMixin):
         self.show_page("Overview")
         _ = self.db.update_streak_for_user(user_id)
         self.refresh_everything()
-        self.check_budget_warning()
 
     # =====================
     # SIDEBAR
     # =====================
 
-
     def create_sidebar(self):
-        self.sidebar = ctk.CTkFrame(
-            self,
-            width=250,
-            corner_radius=0
-        )
+        self.sidebar = ctk.CTkFrame(self, width=280, corner_radius=0)
         self.sidebar.grid(row=0, column=0, sticky="ns")
+
+        self.brand_label = ctk.CTkLabel(
+            self.sidebar,
+            text="COINSCASA",
+            font=("Georgia", 28, "bold"),
+            text_color="#C9A84C"
+        )
+        self.brand_label.pack(pady=(20, 10))
+
+        self.tagline_label = ctk.CTkLabel(
+            self.sidebar,
+            text="Track • Save • Grow",
+            font=("Segoe UI", 12),
+            text_color="#9CA3AF"
+        )
+        self.tagline_label.pack(pady=(0, 20))
+
+        # =====================
+        # PROFILE SECTION — transparent frame so circle shows cleanly
+        # =====================
 
         self.profile_frame = ctk.CTkFrame(
             self.sidebar,
             width=120,
             height=120,
-            corner_radius=60
+            corner_radius=60,
+            fg_color="transparent",   # ← no background box
         )
         self.profile_frame.pack(pady=(25, 15))
         self.profile_frame.pack_propagate(False)
@@ -45,13 +60,16 @@ class NavigationMixin(AppMixin):
         self.profile_label = ctk.CTkLabel(
             self.profile_frame,
             text="👤",
-            font=("Segoe UI", 50)
+            font=("Segoe UI", 50),
+            fg_color="transparent",   # ← no background box
         )
         self.profile_label.pack(expand=True)
 
         self.load_profile_picture()
 
-        nickname = (self.current_user.get_nickname() or self.current_user.get_username()) if self.current_user else ""
+        nickname = (
+            self.current_user.get_nickname() or self.current_user.get_username()
+        ) if self.current_user else ""
 
         self.nickname_display = ctk.CTkLabel(
             self.sidebar,
@@ -73,7 +91,7 @@ class NavigationMixin(AppMixin):
         pages = [
             "Overview",
             "Transactions",
-            "Summary",          # Renamed from Budgets
+            "Summary",
             "Goals & Streaks",
             "Reports",
             "Categories",
@@ -95,12 +113,12 @@ class NavigationMixin(AppMixin):
         ctk.CTkButton(
             self.sidebar,
             text="Sign Out",
-            fg_color="#EF4444",
-            hover_color="#DC2626",
-            height=40,
+            fg_color="#B91C1C",
+            hover_color="#991B1B",
+            height=42,
+            corner_radius=10,
             command=self.sign_out
-        ).pack(fill="x", padx=12, pady=(20, 12))
-
+        ).pack(fill="x", padx=12, pady=(20, 15))
 
     def sign_out(self):
         self.current_user = None
@@ -118,19 +136,9 @@ class NavigationMixin(AppMixin):
     # PAGE CONTAINER
     # =====================
 
-
     def create_container(self):
-        self.container = ctk.CTkFrame(
-            self,
-            fg_color="transparent"
-        )
-        self.container.grid(
-            row=0,
-            column=1,
-            sticky="nsew",
-            padx=20,
-            pady=20
-        )
+        self.container = ctk.CTkFrame(self, fg_color="transparent")
+        self.container.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
         self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
 
@@ -139,22 +147,12 @@ class NavigationMixin(AppMixin):
             p.grid_forget()
 
         for btn in self.nav_buttons.values():
-            btn.configure(
-                fg_color="transparent",
-                text_color=("black", "white")
-            )
+            btn.configure(fg_color="transparent", text_color=("black", "white"))
 
         if page in self.nav_buttons:
-            self.nav_buttons[page].configure(
-                fg_color="#E5E7EB",
-                text_color="black"
-            )
+            self.nav_buttons[page].configure(fg_color="#C9A84C", text_color="black")
 
-        self.pages[page].grid(
-            row=0,
-            column=0,
-            sticky="nsew"
-        )
+        self.pages[page].grid(row=0, column=0, sticky="nsew")
 
         if page == "Overview":
             self.refresh_everything()
@@ -173,21 +171,15 @@ class NavigationMixin(AppMixin):
     # PAGE CREATION
     # =====================
 
-
     def create_pages(self):
         self.pages = {}
         self.pages["Overview"] = self.create_overview_page()
         self.pages["Transactions"] = self.create_transactions_page()
-        self.pages["Summary"] = self.create_summary_page()   # renamed page
+        self.pages["Summary"] = self.create_summary_page()
         self.pages["Reports"] = self.create_reports_page()
         self.pages["Goals & Streaks"] = self.create_goals_page()
         self.pages["Settings"] = self.create_settings_page()
         self.pages["Categories"] = self.create_categories_page()
-
-    # =====================
-    # OVERVIEW PAGE
-    # =====================
-
 
     def refresh_everything(self):
         self.refresh_dashboard()

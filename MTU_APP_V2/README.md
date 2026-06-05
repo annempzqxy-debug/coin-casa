@@ -1,4 +1,4 @@
-# MoneyTracker split layout
+# CoinsCasa split layout
 
 Run the app from this folder:
 

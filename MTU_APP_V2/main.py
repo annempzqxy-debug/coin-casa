@@ -1,6 +1,6 @@
-from app import MoneyTrackerUltimate
+from app import COINSCASA
 
 
 if __name__ == "__main__":
-    app = MoneyTrackerUltimate()
+    app = COINSCASA()
     app.mainloop()
