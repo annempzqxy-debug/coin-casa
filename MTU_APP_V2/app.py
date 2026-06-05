@@ -28,7 +28,7 @@ class COINSCASA(
 
         self.title("COINSCASA")
         self.geometry("1500x900")
-        self.minsize(1100, 700)
+        self.minsize(1000, 620)
         self.after(0, lambda: self.state("zoomed"))  # open maximized
 
         self.categories = []
@@ -51,4 +51,3 @@ class COINSCASA(
         self.grid_rowconfigure(0, weight=1)
 
         self.create_auth_page()
-

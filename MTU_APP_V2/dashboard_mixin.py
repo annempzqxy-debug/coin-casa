@@ -86,9 +86,8 @@ class DashboardMixin(AppMixin):
         # Fire indicator — grey by default, orange when streak > 0
         self.streak_fire_label = ctk.CTkLabel(
             streak_row,
-            text="🔥",
-            font=("Segoe UI", 22),
-            text_color="#6B7280"   # grey initially
+            text="",
+            image=self.get_flame_icon(False, 24)
         )
         self.streak_fire_label.pack(side="left")
 
@@ -374,21 +373,7 @@ class DashboardMixin(AppMixin):
                     bar.set(min(pct / 100, 1.0))
                     bar.pack(fill="x", pady=(2, 0))
 
-        # Streak — update label + fire color
-        streak_summary = self.db.sync_streak_summary_for_user(self.current_user.get_user_id())
-        self.current_streak_current = streak_summary["current"]
-        self.current_streak_best = streak_summary["best"]
-
-        if hasattr(self, "streak_value"):
-            self.streak_value.configure(
-                text=f"Current: {streak_summary['current']} | Best: {streak_summary['best']}"
-            )
-
-        if hasattr(self, "streak_fire_label"):
-            if streak_summary["current"] > 0:
-                self.streak_fire_label.configure(text_color="#F97316")  # orange
-            else:
-                self.streak_fire_label.configure(text_color="#6B7280")  # grey
+        self.refresh_streak_state()
 
         self.load_transactions()
         self.render_recent_transactions_cards()

@@ -25,16 +25,17 @@ class NavigationMixin(AppMixin):
     # =====================
 
     def create_sidebar(self):
-        self.sidebar = ctk.CTkFrame(self, width=280, corner_radius=0)
+        self.sidebar = ctk.CTkFrame(self, width=260, corner_radius=0)
         self.sidebar.grid(row=0, column=0, sticky="ns")
+        self.sidebar.grid_propagate(False)
 
         self.brand_label = ctk.CTkLabel(
             self.sidebar,
             text="COINSCASA",
-            font=("Georgia", 28, "bold"),
+            font=("Georgia", 26, "bold"),
             text_color="#C9A84C"
         )
-        self.brand_label.pack(pady=(20, 10))
+        self.brand_label.pack(pady=(18, 8))
 
         self.tagline_label = ctk.CTkLabel(
             self.sidebar,
@@ -42,7 +43,7 @@ class NavigationMixin(AppMixin):
             font=("Segoe UI", 12),
             text_color="#9CA3AF"
         )
-        self.tagline_label.pack(pady=(0, 20))
+        self.tagline_label.pack(pady=(0, 12))
 
         # =====================
         # PROFILE SECTION — transparent frame so circle shows cleanly
@@ -50,18 +51,18 @@ class NavigationMixin(AppMixin):
 
         self.profile_frame = ctk.CTkFrame(
             self.sidebar,
-            width=120,
-            height=120,
-            corner_radius=60,
+            width=92,
+            height=92,
+            corner_radius=46,
             fg_color="transparent",   # ← no background box
         )
-        self.profile_frame.pack(pady=(25, 15))
+        self.profile_frame.pack(pady=(10, 10))
         self.profile_frame.pack_propagate(False)
 
         self.profile_label = ctk.CTkLabel(
             self.profile_frame,
             text="👤",
-            font=("Segoe UI", 50),
+            font=("Segoe UI", 40),
             fg_color="transparent",   # ← no background box
         )
         self.profile_label.pack(expand=True)
@@ -75,7 +76,7 @@ class NavigationMixin(AppMixin):
         self.nickname_display = ctk.CTkLabel(
             self.sidebar,
             text=nickname,
-            font=("Segoe UI", 24, "bold")
+            font=("Segoe UI", 22, "bold")
         )
         self.nickname_display.pack(pady=(0, 2))
 
@@ -85,9 +86,24 @@ class NavigationMixin(AppMixin):
             font=("Segoe UI", 15),
             text_color="#9CA3AF"
         )
-        self.user_label.pack(pady=(0, 25))
+        self.user_label.pack(pady=(0, 12))
 
         self.nav_buttons = {}
+
+        ctk.CTkButton(
+            self.sidebar,
+            text="Sign Out",
+            fg_color="#B91C1C",
+            hover_color="#991B1B",
+            height=42,
+            corner_radius=10,
+            command=self.sign_out
+        ).pack(side="bottom", fill="x", padx=12, pady=(0, 14))
+
+        self.nav_frame = ctk.CTkScrollableFrame(
+            self.sidebar, fg_color="transparent"
+        )
+        self.nav_frame.pack(fill="both", expand=True, padx=0, pady=(0, 8))
 
         pages = [
             "Overview",
@@ -101,25 +117,15 @@ class NavigationMixin(AppMixin):
 
         for page in pages:
             btn = ctk.CTkButton(
-                self.sidebar,
+                self.nav_frame,
                 text=page,
                 fg_color="transparent",
                 anchor="w",
-                height=45,
+                height=40,
                 command=lambda p=page: self.show_page(p)
             )
-            btn.pack(fill="x", padx=12, pady=4)
+            btn.pack(fill="x", padx=12, pady=3)
             self.nav_buttons[page] = btn
-
-        ctk.CTkButton(
-            self.sidebar,
-            text="Sign Out",
-            fg_color="#B91C1C",
-            hover_color="#991B1B",
-            height=42,
-            corner_radius=10,
-            command=self.sign_out
-        ).pack(fill="x", padx=12, pady=(20, 15))
 
     def sign_out(self):
         self.current_user = None
@@ -139,7 +145,7 @@ class NavigationMixin(AppMixin):
 
     def create_container(self):
         self.container = ctk.CTkFrame(self, fg_color="transparent")
-        self.container.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self.container.grid(row=0, column=1, sticky="nsew", padx=12, pady=12)
         self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
 
@@ -187,10 +193,7 @@ class NavigationMixin(AppMixin):
         self.refresh_reports()
 
         if hasattr(self, "streak_history_box") and self.current_user is not None:
-            summary = self.db.sync_streak_summary_for_user(self.current_user.get_user_id())
-            self.streak_display.configure(
-                text=f"Current streak: {summary['current']} | Best: {summary['best']}"
-            )
+            self.refresh_streak_state()
             self.load_streak_history()
             self.load_goals()
 
