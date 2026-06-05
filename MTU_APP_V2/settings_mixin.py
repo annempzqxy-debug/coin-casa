@@ -3,6 +3,7 @@ from PIL import Image, ImageDraw
 from tkinter import filedialog
 
 from mixin_base import AppMixin
+from pink_theme import THEME_NAME, apply_pink_theme, is_pink_theme, reset_to_standard_theme
 
 _CARD_PAD = 120
 
@@ -236,7 +237,7 @@ class SettingsMixin(AppMixin):
         theme_row = ctk.CTkFrame(theme_card, fg_color="transparent")
         theme_row.pack(anchor="w", padx=18, pady=(0, 16))
 
-        for label in ["Light", "Dark", "System"]:
+        for label in ["Light", "Dark", "System", THEME_NAME]:
             ctk.CTkButton(
                 theme_row, text=label, width=80, height=36,
                 command=lambda m=label: self.change_theme(m)
@@ -468,7 +469,10 @@ class SettingsMixin(AppMixin):
             print("Load Profile Picture Error:", e)
 
     def change_theme(self, mode):
-        ctk.set_appearance_mode(mode.lower())
+        if is_pink_theme(mode):
+            apply_pink_theme(self)
+        else:
+            reset_to_standard_theme(self, mode)
 
     # =====================
     # UPDATE NICKNAME / USERNAME / PASSWORD

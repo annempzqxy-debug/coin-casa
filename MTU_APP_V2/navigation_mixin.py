@@ -1,6 +1,7 @@
 import customtkinter as ctk
 
 from mixin_base import AppMixin
+from pink_theme import COLORS, THEME_NAME
 
 class NavigationMixin(AppMixin):
 
@@ -157,7 +158,15 @@ class NavigationMixin(AppMixin):
             btn.configure(fg_color="transparent", text_color=("black", "white"))
 
         if page in self.nav_buttons:
-            self.nav_buttons[page].configure(fg_color="#C9A84C", text_color="black")
+            if getattr(self, "active_color_theme", None) == THEME_NAME:
+                self.nav_buttons[page].configure(
+                    fg_color=COLORS["primary"],
+                    hover_color=COLORS["primary_hover"],
+                    text_color="white",
+                )
+            else:
+                self.nav_buttons[page].configure(fg_color="#C9A84C", text_color="black")
+            self.active_button = self.nav_buttons[page]
 
         self.pages[page].grid(row=0, column=0, sticky="nsew")
 
