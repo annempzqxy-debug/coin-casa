@@ -3,7 +3,7 @@ import os
 import re
 
 import customtkinter as ctk
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw, ImageFilter
 
 from mixin_base import AppMixin
 from models import User
@@ -32,6 +32,20 @@ def _remove_black_bg(image, threshold=80):
     return image
 
 
+def _add_gold_ring(image, ring_width=6, color="#D8A338"):
+    """Add a gold circular ring border around the badge image."""
+    image = image.convert("RGBA")
+    draw = ImageDraw.Draw(image)
+    w, h = image.size
+    margin = ring_width // 2
+    draw.ellipse(
+        [margin, margin, w - margin - 1, h - margin - 1],
+        outline=color,
+        width=ring_width,
+    )
+    return image
+
+
 class AuthMixin(AppMixin):
 
     def hash_password(self, password):
@@ -48,12 +62,16 @@ class AuthMixin(AppMixin):
             return False
         return True
 
-    def _auth_ctk_image(self, path, size, opacity=1.0, remove_black=False):
+    def _auth_ctk_image(self, path, size, opacity=1.0, remove_black=False, gold_ring=False):
         if not os.path.exists(path):
             return None
         image = Image.open(path).convert("RGBA")
+
+
         if remove_black:
             image = _remove_black_bg(image)
+        if gold_ring:
+            image = _add_gold_ring(image)
         if opacity < 1.0:
             r, g, b, a = image.split()
             a = a.point(lambda x: int(x * opacity))
@@ -86,7 +104,7 @@ class AuthMixin(AppMixin):
             row,
             text=icon_text,
             width=42,
-            font=("Segoe UI", 20, "bold"),
+            font=("Segoe UI Emoji", 22),
             text_color="#9CA3AF",
         ).pack(side="left", padx=(14, 4))
 
@@ -106,23 +124,23 @@ class AuthMixin(AppMixin):
         return row, entry
 
     def _make_password_input(self, parent, placeholder):
-        row, entry = self._make_auth_input(parent, "#", placeholder, show="*")
+        row, entry = self._make_auth_input(parent, "🔒", placeholder, show="*")
         visible = ctk.BooleanVar(value=False)
 
         def toggle_visibility():
             visible.set(not visible.get())
             entry.configure(show="" if visible.get() else "*")
-            toggle.configure(text="Hide" if visible.get() else "Show")
+            toggle.configure(text="👁 Hide" if visible.get() else "👁 Show")
 
         toggle = ctk.CTkButton(
             row,
-            text="Show",
-            width=76,
+            text="👁 Show",
+            width=90,
             height=42,
             fg_color="transparent",
             hover_color="#242A31",
             text_color="#B6BDC8",
-            font=("Segoe UI", 15),
+            font=("Segoe UI Emoji", 14),
             command=toggle_visibility,
         )
         toggle.pack(side="right", padx=(0, 10))
@@ -138,7 +156,7 @@ class AuthMixin(AppMixin):
             fg_color=color,
             hover_color=hover,
             text_color="white",
-            font=("Segoe UI", 18, "bold"),
+            font=("Segoe UI Emoji", 18, "bold"),
             command=command,
         )
 
@@ -158,24 +176,60 @@ class AuthMixin(AppMixin):
         self.auth_frame.grid_columnconfigure(0, weight=1)
         self._auth_images = []
 
-        # Left background coin (3.png) — black bg removed, faded
-        left_coin_img = self._auth_ctk_image(COIN_LEFT_PATH, (720, 720), opacity=0.18, remove_black=True)
+        # =====================
+        # BACKGROUND COINS
+        # =====================
+
+        left_coin_img = self._auth_ctk_image(
+            COIN_LEFT_PATH,
+            (600, 600),
+            opacity=0.18,
+            remove_black=False
+        )
+
         if left_coin_img:
             self._auth_images.append(left_coin_img)
-            left_coin = ctk.CTkLabel(self.auth_frame, text="", image=left_coin_img, fg_color="transparent")
-            left_coin.place(relx=0.08, rely=0.5, anchor="center")
 
-        # Right background coin (4.png) — black bg removed, faded
-        right_coin_img = self._auth_ctk_image(COIN_RIGHT_PATH, (720, 720), opacity=0.18, remove_black=True)
+            self.left_coin = ctk.CTkLabel(
+                self.auth_frame,
+                text="",
+                image=left_coin_img,
+                fg_color="transparent"
+            )
+
+            self.left_coin.place(
+                x=190,
+                y=450,
+                anchor="center"
+            )
+
+        right_coin_img = self._auth_ctk_image(
+            COIN_RIGHT_PATH,
+            (600, 600),
+            opacity=0.18,
+            remove_black=False
+        )
+
         if right_coin_img:
             self._auth_images.append(right_coin_img)
-            right_coin = ctk.CTkLabel(self.auth_frame, text="", image=right_coin_img, fg_color="transparent")
-            right_coin.place(relx=0.92, rely=0.5, anchor="center")
+
+            self.right_coin = ctk.CTkLabel(
+                self.auth_frame,
+                text="",
+                image=right_coin_img,
+                fg_color="transparent"
+            )
+
+            self.right_coin.place(
+                x=1310,
+                y=450,
+                anchor="center"
+            )
 
         glow = ctk.CTkFrame(
             self.auth_frame,
             width=600,
-            height=848,
+            height=820,
             corner_radius=34,
             fg_color="#111315",
         )
@@ -184,22 +238,28 @@ class AuthMixin(AppMixin):
         center = ctk.CTkFrame(
             self.auth_frame,
             width=560,
-            height=820,
+            height=790,
             corner_radius=30,
             fg_color="#1C1F22",
             border_width=1,
             border_color="#22262B",
         )
+
         center.place(relx=0.5, rely=0.5, anchor="center")
         center.pack_propagate(False)
 
-        # Badge — full opacity casa.png
-        badge_img = self._auth_ctk_image(BADGE_PATH, (140, 140))
+
+
+        badge_img = self._auth_ctk_image(BADGE_PATH, (140, 140), gold_ring=True, remove_black=True)
         if badge_img:
             self._auth_images.append(badge_img)
-            ctk.CTkLabel(center, text="", image=badge_img, fg_color="transparent").pack(pady=(32, 2))
+            ctk.CTkLabel(
+                center, text="", image=badge_img, fg_color="transparent"
+            ).pack(pady=(20, 2))
         else:
-            ctk.CTkLabel(center, text="$", font=("Georgia", 76, "bold"), text_color="#D8A338").pack(pady=(44, 4))
+            ctk.CTkLabel(
+                center, text="$", font=("Georgia", 76, "bold"), text_color="#D8A338"
+            ).pack(pady=(30, 4))
 
         title_row = ctk.CTkFrame(center, fg_color="transparent")
         title_row.pack(pady=(0, 8))
@@ -213,14 +273,18 @@ class AuthMixin(AppMixin):
             text="Login or Create an Account",
             font=("Segoe UI", 18),
             text_color="#9CA3AF",
-        ).pack(pady=(0, 22))
+        ).pack(pady=(0, 18))
 
         self.notifications_var = ctk.IntVar(value=0)
 
-        self.username_row, self.username_entry = self._make_auth_input(center, "@", "Username")
+        self.username_row, self.username_entry = self._make_auth_input(
+            center, "👤", "Username"
+        )
         self.username_row.pack(pady=(0, 14))
 
-        self.password_row, self.password_entry = self._make_password_input(center, "Password")
+        self.password_row, self.password_entry = self._make_password_input(
+            center, "Password"
+        )
         self.password_row.pack(pady=(0, 14))
 
         self.confirm_row, self.confirm_password_entry = self._make_password_input(
@@ -236,7 +300,9 @@ class AuthMixin(AppMixin):
             font=("Segoe UI", 14, "bold"),
             text_color="#9CA3AF",
         )
-        self.nickname_row, self.nickname_entry = self._make_auth_input(center, "+", "Nickname")
+        self.nickname_row, self.nickname_entry = self._make_auth_input(
+            center, "✏️", "Nickname"
+        )
 
         self.auth_status = ctk.CTkLabel(
             center,
@@ -246,31 +312,31 @@ class AuthMixin(AppMixin):
             font=("Segoe UI", 13),
             text_color="#F87171",
         )
-        self.auth_status.pack(pady=(0, 12))
+        self.auth_status.pack(pady=(0, 10))
 
         self._make_auth_button(
             center,
-            "Login",
+            "→  Login",
             "#0F67A8",
             "#0C5A94",
             self.login_user,
-        ).pack(pady=(0, 12))
+        ).pack(pady=(0, 10))
 
         self._make_auth_button(
             center,
-            "Sign Up",
+            "👤+  Sign Up",
             "#2F80FF",
             "#246FE5",
             self.signup_user,
-        ).pack(pady=(0, 12))
+        ).pack(pady=(0, 10))
 
         self._make_auth_button(
             center,
-            "Quit",
+            "✕  Quit",
             "#EF1F2D",
             "#CF1824",
             self.destroy,
-        ).pack(pady=(0, 20))
+        ).pack(pady=(0, 16))
 
     def check_password_match(self, event=None):
         password = self.password_entry.get().strip()
